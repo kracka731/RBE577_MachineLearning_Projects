@@ -55,7 +55,10 @@ class SGDLinearRegression:
         Returns:
             tuple: Weight gradients and bias gradients
         """
-        pass
+        error = y_pred - y_true 
+        weight_gradient = -2 * np.mean(X*error)
+        bias_gradient = -2 * np.mean(error)
+        return (weight_gradient, bias_gradient)
 
     def fit(self, X, y, batch_size=32, epochs=100):
         """Train model using mini-batch SGD.
@@ -66,11 +69,11 @@ class SGDLinearRegression:
             batch_size (int): Mini-batch size for SGD
             epochs (int): Number of training epochs
         """
-        n_samples = X.size() # fix this
+        # TODO: epochs. https://www.geeksforgeeks.org/deep-learning/mini-batch-gradient-descent-in-deep-learning/ 
+
+        n_samples = X.size() 
         for i in range(n_samples/batch_size): 
-            sum = 0
-            for j in range(batch_size):
-                sum += y[j] - self.weights
+            
             self.weights[i][a] += self.lr * sum
 
     def predict(self, X):
