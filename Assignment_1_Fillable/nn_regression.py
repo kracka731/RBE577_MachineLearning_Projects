@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
 from helpers.loss import CustomLoss
 from helpers.metrics import compute_mse, compute_position_error, compute_rotation_error
 from datasets import prepare_dataset
