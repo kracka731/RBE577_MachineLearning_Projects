@@ -20,6 +20,9 @@ def engineer_features(angles):
     """
 
     #Your code here
-    return angles # Replace this line with your implementation
+
+    # Use sin(q_i),cos(q_i) for each q
+
+
 
     pass
