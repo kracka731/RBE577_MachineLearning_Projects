@@ -28,7 +28,15 @@ class AnalyticalLinearRegression:
         Returns:
             bool: True if successful, False if matrix is singular
         """
-        pass
+        XT = np.transpose(X)
+        XT_inv = np.linalg.inv(XT*X)
+        weights = XT_inv*XT*y
+
+        # If the determinant of a matrix is 0, it is singular
+        if np.linalg.det(weights) == 0: 
+            return False
+        else:
+            return True
 
     def predict(self, X):
         """Make predictions for given input features.

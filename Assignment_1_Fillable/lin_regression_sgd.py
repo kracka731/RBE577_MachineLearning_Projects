@@ -29,7 +29,7 @@ class SGDLinearRegression:
             input_dim (int): Number of input features
             output_dim (int): Number of output dimensions
         """
-        pass
+        self.weights = np.zeros((input_dim, output_dim))
 
     def _compute_loss(self, y_pred, y_true):
         """Compute MSE loss between predictions and targets.
@@ -41,7 +41,7 @@ class SGDLinearRegression:
         Returns:
             float: MSE loss value
         """
-        pass
+        return compute_mse(y_pred, y_true) 
 
     def _compute_gradients(self, X, y_true, y_pred):
         """Compute gradients for weights and bias.
