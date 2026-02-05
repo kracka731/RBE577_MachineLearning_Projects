@@ -30,6 +30,7 @@ class SGDLinearRegression:
             output_dim (int): Number of output dimensions
         """
         self.weights = np.zeros((input_dim, output_dim))
+        self.lr = 0.2
 
     def _compute_loss(self, y_pred, y_true):
         """Compute MSE loss between predictions and targets.
@@ -65,7 +66,12 @@ class SGDLinearRegression:
             batch_size (int): Mini-batch size for SGD
             epochs (int): Number of training epochs
         """
-        pass
+        n_samples = X.size() # fix this
+        for i in range(n_samples/batch_size): 
+            sum = 0
+            for j in range(batch_size):
+                sum += y[j] - self.weights
+            self.weights[i][a] += self.lr * sum
 
     def predict(self, X):
         """Make predictions for given input features.
