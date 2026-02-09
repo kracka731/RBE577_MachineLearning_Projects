@@ -30,10 +30,10 @@ class AnalyticalLinearRegression:
         """
         XT = np.transpose(X)
         XT_inv = np.linalg.inv(XT*X)
-        weights = XT_inv*XT*y
+        self.weights = XT_inv*XT*y
 
         # If the determinant of a matrix is 0, it is singular
-        if np.linalg.det(weights) == 0: 
+        if np.linalg.det(self.weights) == 0: 
             return False
         else:
             return True
@@ -47,8 +47,20 @@ class AnalyticalLinearRegression:
         Returns:
             np.ndarray: Predicted values of shape (n_samples, n_outputs)
         """
-        pass
 
+        #TODO Change these values
+
+        # y = mx+b where:
+            # m is the slope of the line
+            # b is the intercept (when y = 0)
+            # x is the input (indepent variable)
+            # y is the predicted variable
+
+        n_features = 0
+
+        y_pred = [X[0], n_features]
+
+        return y_pred
 
 if __name__ == "__main__":
 
@@ -71,7 +83,12 @@ if __name__ == "__main__":
 
     # Train model
     model = AnalyticalLinearRegression()
-    model.fit(X_train, y_train)
+    success = model.fit(X_train, y_train)
+
+    if success:
+        y_pred = model.predict(X_test)
+
+
 
     #############Your CODE ENDS HERE##############
 
