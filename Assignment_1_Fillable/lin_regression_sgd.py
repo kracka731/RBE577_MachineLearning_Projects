@@ -22,6 +22,9 @@ class SGDLinearRegression:
         >>> y_pred = model.predict(X_test)
     """
 
+    def __init__(self, learning_rate):
+        self.lr = learning_rate
+
     def _initialize_parameters(self, input_dim, output_dim):
         """Initialize model weights and bias.
 
@@ -29,8 +32,7 @@ class SGDLinearRegression:
             input_dim (int): Number of input features
             output_dim (int): Number of output dimensions
         """
-        self.weights = np.zeros((input_dim, output_dim))
-        self.lr = 0.2
+        self.weights = np.zeros(input_dim+1) # add row for the intercept/bias
 
     def _compute_loss(self, y_pred, y_true):
         """Compute MSE loss between predictions and targets.
@@ -60,7 +62,7 @@ class SGDLinearRegression:
         bias_gradient = -2 * np.mean(error)
         return (weight_gradient, bias_gradient)
 
-    def fit(self, X, y, batch_size=32, epochs=100):
+    def fit(self, X:np.ndarray, y:np.ndarray, batch_size=32, epochs=100):
         """Train model using mini-batch SGD.
 
         Args:
@@ -69,12 +71,28 @@ class SGDLinearRegression:
             batch_size (int): Mini-batch size for SGD
             epochs (int): Number of training epochs
         """
-        # TODO: epochs. https://www.geeksforgeeks.org/deep-learning/mini-batch-gradient-descent-in-deep-learning/ 
+        n_samples = np.size(X, axis=0)
+        num_batches = int(n_samples/batch_size)
+        print(f"nsamples: {n_samples}")
 
-        n_samples = X.size() 
-        for i in range(n_samples/batch_size): 
-            
-            self.weights[i][a] += self.lr * sum
+        for episode in range(epochs):
+            # Reshuffle the data every episode to prevent overfitting
+            data = np.hstack((X, y))
+            np.random.shuffle(data)
+
+            for batch in range(num_batches+1): # Examine one batch of data at a time 
+                # Extract slices of the data based on batch number & batch size 
+                i = batch*batch_size        # starting data num index 
+                j = (batch+1)*batch_size    # ending data num index
+                X_batch = data[i:j, :np.size(X, axis=1)]
+                y_batch = data[i:j,  np.size(X, axis=1):]
+                y_pred = self.weights[1+i:1+j].T @ X_batch
+
+                # Compute gradient & weights for this batch
+                weight_grad, bias_grad = self._compute_gradients(X_batch, y_batch, y_pred)
+                self.weights[0] += self.lr * bias_grad # TODO: double check??
+                self.weights[1+i:1+j] += self.lr * weight_grad # TODO: - or + ?
+
 
     def predict(self, X):
         """Make predictions for given input features.
@@ -89,13 +107,14 @@ class SGDLinearRegression:
 
 
 if __name__ == "__main__":
-    use_engineered_features = True 
+    use_engineered_features = False 
 
 
     #############Your CODE STARTS HERE##############
 
     # Load data
-    X_train, X_test, y_train, y_test = prepare_dataset("data/ur10_dataset.csv")
+    # X_train, X_test, y_train, y_test = prepare_dataset("data/ur10_dataset.csv")
+    X_train, X_test, y_train, y_test = prepare_dataset("data/ur10_linear_dataset.csv")
 
     # Convert to numpy
     X_train = X_train.values
@@ -110,6 +129,7 @@ if __name__ == "__main__":
 
     # Train model
     model = SGDLinearRegression(learning_rate=0.01)
+    model._initialize_parameters(np.size(X_train, axis=0), np.size(y_train, axis=0))
     model.fit(X_train, y_train)
 
     #############Your CODE ENDS HERE##############
