@@ -28,9 +28,17 @@ class AnalyticalLinearRegression:
         Returns:
             bool: True if successful, False if matrix is singular
         """
+        # Data parsed as such in datasets.py
+        # X (number of samples, [th1, th2, th3, th4, th5, th6])
+        # y (number of samples,  [x,y,z,rx,ry,rz])
+
+        # We will be using the Ordinary Least Squares method
+
         XT = np.transpose(X)
-        XT_inv = np.linalg.inv(XT*X)
-        self.weights = XT_inv*XT*y
+        X_cross_inv = np.linalg.inv(np.cross(XT,X)) 
+
+        # Find the estimated coefficient vector and label as weights
+        self.weights = X_cross_inv*XT*y
 
         # If the determinant of a matrix is 0, it is singular
         if np.linalg.det(self.weights) == 0:
@@ -49,16 +57,9 @@ class AnalyticalLinearRegression:
         """
 
         #TODO Change these values
-        
-        # y = mx+b where:
-            # m is the slope of the line
-            # b is the intercept (when y = 0)
-            # x is the input (indepent variable)
-            # y is the predicted variable
 
-        n_features = 0
 
-        y_pred = [X[0], n_features]
+        y_pred = [self.weights[0], self.weights[1], self.weights[2], self.weights[3], self.weights[4], self.weights[5]]
 
         return y_pred
 
