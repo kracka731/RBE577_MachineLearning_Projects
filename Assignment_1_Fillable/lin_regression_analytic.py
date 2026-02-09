@@ -33,7 +33,7 @@ class AnalyticalLinearRegression:
         self.weights = XT_inv*XT*y
 
         # If the determinant of a matrix is 0, it is singular
-        if np.linalg.det(self.weights) == 0: 
+        if np.linalg.det(self.weights) == 0:
             return False
         else:
             return True
@@ -49,7 +49,7 @@ class AnalyticalLinearRegression:
         """
 
         #TODO Change these values
-
+        
         # y = mx+b where:
             # m is the slope of the line
             # b is the intercept (when y = 0)
