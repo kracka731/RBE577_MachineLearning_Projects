@@ -35,10 +35,10 @@ class AnalyticalLinearRegression:
         # We will be using the Ordinary Least Squares method
 
         XT = np.transpose(X)
-        X_cross_inv = np.linalg.inv(np.cross(XT,X)) 
+        X_cross_inv = np.linalg.inv(XT @ X)
 
         # Find the estimated coefficient vector and label as weights
-        self.weights = X_cross_inv*XT*y
+        self.weights = X_cross_inv@XT@y
 
         # If the determinant of a matrix is 0, it is singular
         if np.linalg.det(self.weights) == 0:
@@ -56,12 +56,12 @@ class AnalyticalLinearRegression:
             np.ndarray: Predicted values of shape (n_samples, n_outputs)
         """
 
-        #TODO Change these values
+        print("weights: ",self.weights,"\n")
+        print("X: ",X,"\n")
 
+        y_pred = self.weights@X.T
 
-        y_pred = [self.weights[0], self.weights[1], self.weights[2], self.weights[3], self.weights[4], self.weights[5]]
-
-        return y_pred
+        return y_pred.T
 
 if __name__ == "__main__":
 
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     use_engineered_features = False 
 
     # Load data
-    X_train, X_test, y_train, y_test = prepare_dataset("data/ur10_dataset.csv")
+    X_train, X_test, y_train, y_test = prepare_dataset("data/ur10_linear_dataset.csv")
 
     # Convert to numpy
     X_train = X_train.values
