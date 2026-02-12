@@ -32,7 +32,9 @@ class SGDLinearRegression:
             input_dim (int): Number of input features
             output_dim (int): Number of output dimensions
         """
-        self.weights = np.zeros(input_dim+1) # add row for the intercept/bias
+        print(f"in/out features: {input_dim, output_dim}")
+        self.weights = np.zeros((input_dim, output_dim)) # add row for the intercept/bias
+        print(f"weights shape: {np.shape(self.weights)})")
 
     def _compute_loss(self, y_pred, y_true):
         """Compute MSE loss between predictions and targets.
@@ -73,7 +75,6 @@ class SGDLinearRegression:
         """
         n_samples = np.size(X, axis=0)
         num_batches = int(n_samples/batch_size)
-        print(f"nsamples: {n_samples}")
 
         for episode in range(epochs):
             # Reshuffle the data every episode to prevent overfitting
@@ -86,12 +87,14 @@ class SGDLinearRegression:
                 j = (batch+1)*batch_size    # ending data num index
                 X_batch = data[i:j, :np.size(X, axis=1)]
                 y_batch = data[i:j,  np.size(X, axis=1):]
-                y_pred = self.weights[1+i:1+j].T @ X_batch
+                # print(f"dims of weights slice: {np.shape(self.weights)}, now T: {np.shape(self.weights.T)}, X batch; {np.shape(X_batch)}")
+                y_pred = (self.weights @ X_batch.T).T
+                # print(f"y pred shape: {np.shape(y_pred)}")
 
                 # Compute gradient & weights for this batch
                 weight_grad, bias_grad = self._compute_gradients(X_batch, y_batch, y_pred)
-                self.weights[0] += self.lr * bias_grad # TODO: double check??
-                self.weights[1+i:1+j] += self.lr * weight_grad # TODO: - or + ?
+                # self.weights[0] += self.lr * bias_grad # TODO: double check??
+                self.weights += self.lr * weight_grad # TODO: - or + ?
 
 
     def predict(self, X):
@@ -103,7 +106,9 @@ class SGDLinearRegression:
         Returns:
             np.ndarray: Predicted values of shape (n_samples, n_outputs)
         """
-        pass
+        y = (self.weights @ X.T).T
+        # print(f"shape of y_pred final: {np.shape(y)}")
+        return y
 
 
 if __name__ == "__main__":
@@ -129,8 +134,9 @@ if __name__ == "__main__":
 
     # Train model
     model = SGDLinearRegression(learning_rate=0.01)
-    model._initialize_parameters(np.size(X_train, axis=0), np.size(y_train, axis=0))
+    model._initialize_parameters(np.size(X_train, axis=1), np.size(y_train, axis=1))
     model.fit(X_train, y_train)
+    # model.predict(X_test)
 
     #############Your CODE ENDS HERE##############
 
