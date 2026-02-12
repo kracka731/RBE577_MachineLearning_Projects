@@ -35,7 +35,7 @@ class AnalyticalLinearRegression:
         # We will be using the Ordinary Least Squares method
 
         XT = np.transpose(X)
-        X_cross_inv = np.linalg.inv(XT @ X)
+        X_cross_inv = np.linalg.inv(XT @ X) # The matrix of feature cross products
 
         # Find the estimated coefficient vector and label as weights
         self.weights = X_cross_inv@XT@y
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     use_engineered_features = False 
 
     # Load data
-    X_train, X_test, y_train, y_test = prepare_dataset("data/ur10_linear_dataset.csv")
+    X_train, X_test, y_train, y_test = prepare_dataset("data/ur10_dataset.csv")
 
     # Convert to numpy
     X_train = X_train.values
