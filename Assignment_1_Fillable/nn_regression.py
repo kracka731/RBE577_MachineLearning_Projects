@@ -33,44 +33,58 @@ class MLP(nn.Module):
             All layers are stored in a Sequential container accessible via self.network.
         """
         super(MLP, self).__init__()
-        layers = []
+        layers = [] # At least 1 hidden layer, more possible
 
         #FILLOUT 
+
+
+        self.weights = np.zeros(input_size)
+        self.bias = 0
+
+
 
     def forward(self, x):
         return self.network(x)
 
     def fit(
-         self,
-         X_train,
-         y_train,
-         lr=0.001,
-         batch_size=32,
-         epochs=100,
-         device="gpu",
+        self,
+        X_train,
+        y_train,
+        lr=0.001,
+        batch_size=32,
+        epochs=100,
+        device="gpu",
      ):
    
-         # Convert to tensors
-         X_train_tensor = convert_to_tensor(X_train, device)
-         y_train_tensor = convert_to_tensor(y_train, device)
-         
-         # Create data loaders
-         train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
-         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-     
-         # Initialize model, loss, and optimizer
-         criterion = CustomLoss(position_weight=1.0, rotation_weight=1.0)
-         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-     
-         # Training loop
+        # Convert to tensors
+        X_train_tensor = convert_to_tensor(X_train, device)
+        y_train_tensor = convert_to_tensor(y_train, device)
+        
+        # Create data loaders
+        train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    
+        # Initialize model, loss, and optimizer
+        criterion = CustomLoss(position_weight=1.0, rotation_weight=1.0)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    
+        # Training loop
 
-         #### Your CODE STARTS HERE ####
-         
+        #### Your CODE STARTS HERE ####
 
-         #### Your CODE ENDS HERE ####
-         
-     
-         return model
+
+        
+        for _ in range(epochs):
+            for i in range(batch_size):
+                # compute weighted sum (ws)
+                ws = np.dot(X_train[i], self.weights)
+        
+
+
+        #### Your CODE ENDS HERE ####
+        
+    
+        return model
 
     def predict(self, X, device="cuda"):
         X_tensor = convert_to_tensor(X, device)
