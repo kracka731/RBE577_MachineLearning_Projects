@@ -35,16 +35,27 @@ class MLP(nn.Module):
         super(MLP, self).__init__()
         layers = [] # At least 1 hidden layer, more possible
 
-        #FILLOUT 
+        #TODO FILLOUT
 
+        torch.cuda.init()
 
         self.weights = np.zeros(input_size)
         self.bias = 0
 
-
+        self.learning_rate = 0.01 # test value. Can be altered
+        # self.n_iterations = 1000 # Number of epochs. Don't do to much to prevent overfitting.
+        self.weights = None # What the model will learn to adapt
+        self.bias = None # Controls the activation threshold in the activation function
 
     def forward(self, x):
         return self.network(x)
+
+    def _step_function(self, x, threshold: int = 0):
+        # where x is greater than the threshold, yield 1
+        # otherwise, yield 0
+        # 0 is just a standard threshold value for this default activation function
+        # bias will alter this in an abstracted fashion
+        return np.where(x > threshold, 1, 0)
 
     def fit(
         self,
@@ -54,35 +65,45 @@ class MLP(nn.Module):
         batch_size=32,
         epochs=100,
         device="gpu",
-     ):
-   
+        ):
+
         # Convert to tensors
         X_train_tensor = convert_to_tensor(X_train, device)
         y_train_tensor = convert_to_tensor(y_train, device)
-        
+
         # Create data loaders
         train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    
+
         # Initialize model, loss, and optimizer
         criterion = CustomLoss(position_weight=1.0, rotation_weight=1.0)
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    
+
         # Training loop
 
         #### Your CODE STARTS HERE ####
 
+        # Adapted from this website: https://www.freecodecamp.org/news/build-a-multilayer-perceptron-with-examples-and-python-code/
+        # MLP needs at least one hidden layer.
+        # Will initially design with one layer 
 
+        n_samples, n_features = X_train.shape
+
+        self.weights = np.zeros(n_features)
+        self.bias = 0
         
         for _ in range(epochs):
-            for i in range(batch_size):
+            for i in range(n_samples):
                 # compute weighted sum (ws)
-                ws = np.dot(X_train[i], self.weights)
+                ws = np.dot(X_train[i], self.weights) + self.bias
+                
+                # apply the activation function
+                y_pred = self._step_function(ws)
+
+                self.weights += self.learning_rate * (y_train[i] - y_pred) * X_train[i]
+                self.bias += self.learning_rate * (y_train[i] - y_pred)
         
-
-
         #### Your CODE ENDS HERE ####
-        
     
         return model
 
