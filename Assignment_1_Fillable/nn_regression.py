@@ -44,58 +44,6 @@ class MLP(nn.Module):
             nn.Linear(hidden_sizes[1],output_size)
         )
 
-        # torch.cuda.init()
-
-
-
-        # See for explainations: https://medium.com/@mn05052002/building-a-simple-mlp-from-scratch-using-pytorch-7d50ca66512b
-        # Initialise weights for the linear transformation of inputs into the hidden layer
-        # self.W1 = torch.randn(input_size, hidden_sizes[0], requires_grad=True) # using 128 neurons in the hidden layer
-        # self.b1 = torch.randn(1, hidden_sizes[0], requires_grad=True) # bias
-
-        # # Initialise weights for the linear transformation of hidden layer outputs
-        # self.W2 = torch.randn(hidden_sizes[0], output_size, requires_grad=True)
-        # self.b2 = torch.randn(1, output_size, requires_grad=True)
-
-        # View this video on back-propagation: https://www.youtube.com/watch?v=tIeHLnjs5U8
-        # Massively helpful for understanding the math in this file
-
-
-
-    # def network(self, X):
-    #     # perform matrix multiplication between inputs and weights
-    #     # z1 = X*W1+b1
-    #     self.z1 = torch.matmul(X, self.W1) + self.b1 # Used to compute a for this node, which when combined with y produces the cost
-    #     self.a1 = torch.sigmoid(self.z1) # Hidden layer sigmoid activation function (action)
-    #     # Consider the weighted sum z and output 0 or 1 without discontinuity
-
-    #     # z2 = X*W2*b2
-    #     self.z2 = torch.matmul(self.a1, self.W2) + self.b2 
-    #     self.a2 = torch.sigmoid(self.z2) # Output layer activation function
-
-    #     return self.a2 
-    
-    # def backward(self, X, y, output, lr):
-    #     # Backward propogation, considering the derivatives of seperate values
-    #     # Using these derivatives, we can determine the strength of neurons
-    #     # In other words, what neurons make what impacts on output values
-
-    #     m=X.shape[0]
-    #     dz2 = output-y 
-    #     dW2 = torch.matmul(self.a1.T, dz2)
-    #     db2=torch.sum(dz2, axis=0)/m
-
-    #     da1=torch.matmul(dz2, self.W2.T)
-    #     dz1=da1*(self.a1*(1-self.a1))
-    #     dw1=torch.matmul(X.T,dz1)/m
-    #     db1 = torch.sum(dz1, axis=0) / m
-
-    #     with torch.no_grad():
-    #         self.W1 -= lr * dw1
-    #         self.b1 -= lr * db1
-    #         self.W2 -= lr * dW2
-    #         self.b2 -= lr * db2
-
     def network(self, x):
         x = self.flatten(x)
         logits = self.linear_relu_stack(x)
@@ -137,6 +85,8 @@ class MLP(nn.Module):
             loss = criterion(predictions=pred, targets=y)
 
             # Backpropagation
+            # View this video on back-propagation: https://www.youtube.com/watch?v=tIeHLnjs5U8
+            # Massively helpful for understanding the math behind the scenes
             loss.backward() # deposits the gradients of the loss w.r.t. each parameter through backpropagation
             optimizer.step() # adjust parameters by the collected gradients collected in the backward pass
             optimizer.zero_grad() # reset gradients of model parameters. This prevents double-counting
@@ -144,26 +94,6 @@ class MLP(nn.Module):
             if batch % 100 == 0: # Show results over time
                 loss, current = loss.item(), batch * batch_size + len(X)
                 print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
-
-
-
-        # Instead I have to use pytorch to collaborate with our predict function.
-        # So now, based on: https://medium.com/@mn05052002/building-a-simple-mlp-from-scratch-using-pytorch-7d50ca66512b
-        
-        # self.losses = []
-        # for epoch in range(epochs):
-        #     output = self.forward(X_train_tensor)
-
-        #     # Compute loss using mean squared error
-        #     loss = criterion(predictions=output, targets=y_train_tensor)
-        #     self.losses.append(loss.item())
-
-        #     #update weights
-        #     self.backward(X_train_tensor, y_train_tensor, output, lr)
-        #     if (epoch + 1) % 100 == 0:
-        #         print(f"Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}")
-
-        
 
 
         #### Your CODE ENDS HERE ####
@@ -183,7 +113,7 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = prepare_dataset("data/ur10_dataset.csv")
 
     model = MLP().to("cuda")
-    print(model)
+    print("Model: \n",model)
 
     # Train model
     model.fit(
