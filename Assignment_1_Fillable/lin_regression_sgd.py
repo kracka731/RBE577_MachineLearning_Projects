@@ -33,7 +33,7 @@ class SGDLinearRegression:
             output_dim (int): Number of output dimensions
         """
         # print(f"in/out features: {input_dim, output_dim}")
-        self.weights = np.zeros((input_dim, output_dim)) # add row for the intercept/bias
+        self.weights = np.zeros((input_dim+1, output_dim)) # add row for the intercept/bias
         # print(f"weights shape: {np.shape(self.weights)}")
 
     def _compute_loss(self, y_pred, y_true):
@@ -74,29 +74,32 @@ class SGDLinearRegression:
             batch_size (int): Mini-batch size for SGD
             epochs (int): Number of training epochs
         """
-        n_samples = np.size(X, axis=0)
+        n_samples, n_inputs = np.shape(X)
         num_batches = int(np.ceil(n_samples/batch_size))
 
         for episode in range(epochs):
             # Reshuffle the data every episode to prevent overfitting
-            data = np.hstack((X, y))
+            data = np.hstack((np.ones((n_samples, 1)), X, y)) # add column of ones for the intercept/bias
             np.random.shuffle(data)
 
             for batch in range(num_batches): # Examine one batch of data at a time 
                 # Extract slices of the data based on batch number & batch size 
                 i = batch*batch_size        # starting data num index 
                 j = (batch+1)*batch_size    # ending data num index
-                X_batch = data[i:j, :np.size(X, axis=1)]
-                y_batch = data[i:j,  np.size(X, axis=1):]
+                X_batch = data[i:j, :n_inputs+1]
+                y_batch = data[i:j,  n_inputs+1:]
                 # print(f"dims of weights slice: {np.shape(self.weights)}, now T: {np.shape(self.weights.T)}, X batch; {np.shape(X_batch)}")
                 y_pred = X_batch @ self.weights# =(self.weights.T @ X_batch.T).T
                 # print(f"y pred shape: {np.shape(y_pred)}")
 
                 # Compute gradient & weights for this batch
                 weight_grad, bias_grad = self._compute_gradients(X_batch, y_batch, y_pred)
-                # self.weights[0] += self.lr * bias_grad # TODO: double check??
-                self.weights += self.lr * weight_grad 
-            y_pred = X @ self.weights
+                self.weights[0, :] += self.lr * bias_grad # TODO: double check??
+                self.weights[0:, :] += self.lr * weight_grad 
+
+            # Can optionally elect to track loss each epoch: 
+            X_ = np.hstack((np.ones((n_samples, 1)), X))
+            y_pred = X_ @ self.weights
             # print(f"loss: {self._compute_loss(y_pred, y)}")
 
 
@@ -110,13 +113,15 @@ class SGDLinearRegression:
         Returns:
             np.ndarray: Predicted values of shape (n_samples, n_outputs)
         """
-        y = X @ self.weights # (self.weights @ X.T).T
-        # print(f"shape of y_pred final: {np.shape(y)}")
+        # add column of ones for the intercept/bias
+        n_samples, _ = np.shape(X)
+        X = np.hstack((np.ones((n_samples, 1)), X))
+        y = X @ self.weights 
         return y
 
 
 if __name__ == "__main__":
-    use_engineered_features = False 
+    use_engineered_features = True 
 
 
     #############Your CODE STARTS HERE##############
