@@ -59,9 +59,10 @@ class SGDLinearRegression:
         Returns:
             tuple: Weight gradients and bias gradients
         """
+        n_samples, n_outputs = np.shape(y_true)
         error = y_pred - y_true 
-        weight_gradient = -2 * np.mean(X*error)
-        bias_gradient = -2 * np.mean(error)
+        weight_gradient = -2/n_samples * (X.T @ error)
+        bias_gradient = -2 * np.mean(error, axis=0)
         return (weight_gradient, bias_gradient)
 
     def fit(self, X:np.ndarray, y:np.ndarray, batch_size=32, epochs=100):
@@ -88,7 +89,7 @@ class SGDLinearRegression:
                 X_batch = data[i:j, :np.size(X, axis=1)]
                 y_batch = data[i:j,  np.size(X, axis=1):]
                 # print(f"dims of weights slice: {np.shape(self.weights)}, now T: {np.shape(self.weights.T)}, X batch; {np.shape(X_batch)}")
-                y_pred = X_batch @ self.weights# (self.weights @ X_batch.T).T
+                y_pred = X_batch @ self.weights# =(self.weights.T @ X_batch.T).T
                 # print(f"y pred shape: {np.shape(y_pred)}")
 
                 # Compute gradient & weights for this batch

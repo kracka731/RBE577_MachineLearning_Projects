@@ -19,10 +19,15 @@ def engineer_features(angles):
         (1, 42)
     """
 
-    #Your code here
+    n_samples, n_inputs = np.shape(angles)
+    features = angles.copy()
 
-    # Use sin(q_i),cos(q_i) for each q
+    for q_i in range(1, n_inputs+1):
+        # Find the sum of the current joint angle and all preceeding joint angles
+        tot_ang = np.sum(angles[:, :q_i], axis=1)
+        # Extract effects of angles on xyz based on cos & sin
+        cos = np.reshape(np.cos(tot_ang), (n_samples, 1))
+        sin = np.reshape(np.sin(tot_ang), (n_samples, 1))
+        features = np.hstack((features, cos, sin))
 
-
-
-    pass
+    return features
