@@ -95,7 +95,8 @@ class MLP(nn.Module):
 
             for batch, (X, y) in enumerate(train_loader):
                 # Compute prediction and loss
-                pred = model(X) #need to implement this correctly
+                pred = model(X) 
+
                 loss = criterion(predictions=pred, targets=y)
 
                 # Backpropagation
@@ -106,6 +107,7 @@ class MLP(nn.Module):
                 optimizer.zero_grad() # reset gradients of model parameters. This prevents double-counting
 
                 if batch % 100 == 0: # Show results over time
+                    # print("train pred: ",pred)
                     loss, current = loss.item(), batch * batch_size + len(X)
                     print(f"loss: {loss:>7f} [{current:>5d}/{trainset_size:>5d}]")
 
@@ -118,9 +120,13 @@ class MLP(nn.Module):
 
             with torch.no_grad(): # Ensures no gradients are computed during testing below
                 for X, y in test_loader:
-                    pred = model(X)
+                    pred = model(X) # Tensor size of 32, 6 long
+                    # print("test pred: ",pred)
                     test_loss += criterion(predictions=pred, targets=y).item()
-                    correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+                    # print("test_loss: ",test_loss)
+                    # print("y: ",y)
+                    # x[32,6], y[32,6]
+                    correct += (pred.argmax(1) == y.argmax(1)).type(torch.float).sum().item()
 
             test_loss /= num_test_batches
             correct /= testset_size
@@ -130,7 +136,7 @@ class MLP(nn.Module):
     
         return model
 
-    def predict(self, X, device="cuda"): # Currently unused. Is there a way I can? Or a reason to? May be an alternative to testing loop portion.
+    def predict(self, X, device="cuda"): # Currently unused. Is there a way I can? Or a reason to? May be an alternative to testing loop portion. But the forced convert to tensor line gets in the way.
         X_tensor = convert_to_tensor(X, device)
         self.eval()
         with torch.no_grad():
@@ -143,7 +149,7 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = prepare_dataset("data/ur10_dataset.csv")
 
     model = MLP().to("cuda")
-    print("Model: \n",model)
+    print("Model: \n",model) # For the world to see.
 
     # Train model
     model.fit(
