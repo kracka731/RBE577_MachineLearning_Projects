@@ -159,7 +159,7 @@ if __name__ == "__main__":
         y_test.values,
         lr=0.001,
         batch_size=32,
-        epochs=10,
+        epochs=100,
         device="cuda",
     )
 
