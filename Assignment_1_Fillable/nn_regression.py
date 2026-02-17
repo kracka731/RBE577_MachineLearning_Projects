@@ -14,7 +14,7 @@ def convert_to_tensor(data, device="cpu"):
     return torch.tensor(data, dtype=torch.float32).to(device)
 
 class MLP(nn.Module):
-    def __init__(self, input_size=6, hidden_sizes=[128, 64], output_size=6):
+    def __init__(self, input_size=6, hidden_sizes=[128, 64, 32], output_size=6):
         """
         Initialize a Multi-Layer Perceptron (MLP) neural network.
 
@@ -41,7 +41,9 @@ class MLP(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_sizes[0], hidden_sizes[1]),
             nn.ReLU(),
-            nn.Linear(hidden_sizes[1],output_size)
+            nn.Linear(hidden_sizes[1], hidden_sizes[2]),
+            nn.ReLU(),
+            nn.Linear(hidden_sizes[2],output_size)
         )
 
     def network(self, x):
@@ -56,6 +58,8 @@ class MLP(nn.Module):
         self,
         X_train,
         y_train,
+        X_test,
+        y_test,
         lr=0.001,
         batch_size=32,
         epochs=100,
@@ -65,42 +69,68 @@ class MLP(nn.Module):
         # Convert to tensors
         X_train_tensor = convert_to_tensor(X_train, device)
         y_train_tensor = convert_to_tensor(y_train, device)
+        X_test_tensor = convert_to_tensor(X_test, device)
+        Y_test_tensor = convert_to_tensor(y_test, device)
 
         # Create data loaders
         train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        test_dataset = TensorDataset(X_test_tensor, Y_test_tensor)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
         # Initialize model, loss, and optimizer
         criterion = CustomLoss(position_weight=1.0, rotation_weight=1.0)
         optimizer = torch.optim.Adam(model.parameters(), lr=lr) # not SGD, instead uses Adaptive Moment Estimation
 
-        # Training loop
 
         #### Your CODE STARTS HERE ####
-        size = len(train_loader)
+        trainset_size = len(train_dataset)
+        testset_size = len(test_dataset)
+        num_test_batches = len(test_loader)
 
-        for batch, (X, y) in enumerate(train_loader):
-            # Compute prediction and loss
-            pred = model(X) #need to implement this correctly
-            loss = criterion(predictions=pred, targets=y)
+        for t in range(epochs):
+            print(f"Epoch {t+1}\n--------------")
+            
+            # Training loop
 
-            # Backpropagation
-            # View this video on back-propagation: https://www.youtube.com/watch?v=tIeHLnjs5U8
-            # Massively helpful for understanding the math behind the scenes
-            loss.backward() # deposits the gradients of the loss w.r.t. each parameter through backpropagation
-            optimizer.step() # adjust parameters by the collected gradients collected in the backward pass
-            optimizer.zero_grad() # reset gradients of model parameters. This prevents double-counting
+            for batch, (X, y) in enumerate(train_loader):
+                # Compute prediction and loss
+                pred = model(X) #need to implement this correctly
+                loss = criterion(predictions=pred, targets=y)
 
-            if batch % 100 == 0: # Show results over time
-                loss, current = loss.item(), batch * batch_size + len(X)
-                print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
+                # Backpropagation
+                # View this video on back-propagation: https://www.youtube.com/watch?v=tIeHLnjs5U8
+                # Massively helpful for understanding the math behind the scenes
+                loss.backward() # deposits the gradients of the loss w.r.t. each parameter through backpropagation
+                optimizer.step() # adjust parameters by the collected gradients collected in the backward pass
+                optimizer.zero_grad() # reset gradients of model parameters. This prevents double-counting
 
+                if batch % 100 == 0: # Show results over time
+                    loss, current = loss.item(), batch * batch_size + len(X)
+                    print(f"loss: {loss:>7f} [{current:>5d}/{trainset_size:>5d}]")
+
+            # ---
+
+            # Testing loop
+
+            model.eval() # Set model to evaluation mode for batch normalization
+            test_loss, correct = 0, 0
+
+            with torch.no_grad(): # Ensures no gradients are computed during testing below
+                for X, y in test_loader:
+                    pred = model(X)
+                    test_loss += criterion(predictions=pred, targets=y).item()
+                    correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+
+            test_loss /= num_test_batches
+            correct /= testset_size
+            print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
         #### Your CODE ENDS HERE ####
     
         return model
 
-    def predict(self, X, device="cuda"):
+    def predict(self, X, device="cuda"): # Currently unused. Is there a way I can? Or a reason to? May be an alternative to testing loop portion.
         X_tensor = convert_to_tensor(X, device)
         self.eval()
         with torch.no_grad():
@@ -119,9 +149,11 @@ if __name__ == "__main__":
     model.fit(
         X_train.values,
         y_train.values,
+        X_test.values,
+        y_test.values,
         lr=0.001,
         batch_size=32,
-        epochs=100,
+        epochs=10,
         device="cuda",
     )
 
