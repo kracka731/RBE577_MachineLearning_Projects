@@ -5,7 +5,7 @@ from datasets import prepare_dataset
 from lin_regression_sgd import SGDLinearRegression
 from lin_regression_analytic import AnalyticalLinearRegression
 
-def prep_data(dataset, n_samples:int, use_engineered_features=False):
+def eval_data(dataset, n_samples:int, use_engineered_features=False):
     X_train, X_test, y_train, y_test = dataset
     # Convert to numpy
     X_train = X_train.values[:n_samples, :]
@@ -18,7 +18,18 @@ def prep_data(dataset, n_samples:int, use_engineered_features=False):
         from feature_engineering import engineer_features
         X_train = engineer_features(X_train)
         X_test = engineer_features(X_test) 
-    return X_train, X_test, y_train, y_test
+
+    # Train Analytic & SGD models 
+    an_train = train(an_model, X_train, y_train)
+    sgd_train = train(sgd_model, X_train, y_train)
+
+    # Predict 
+    y_pred = an_model.predict(X_test)
+    an_test = compute_stats(y_pred, y_test)
+    y_pred = sgd_model.predict(X_test)
+    sgd_test = compute_stats(y_pred, y_test)
+
+    return an_train, sgd_train, an_test, sgd_test
 
 def train(model, X_train, y_train):
     # Train model
@@ -40,44 +51,9 @@ def compute_stats(predictions:np.ndarray, targets:np.ndarray):
     tot_error = pos_error + rot_error
     return np.array([[loss], [pos_error], [rot_error], [tot_error]])
 
-if __name__ == "__main__":
-    # Load data
-    dataset = prepare_dataset("data/ur10_dataset.csv")
-    
-    # Initialize models 
-    sgd_model = SGDLinearRegression(learning_rate=0.01)
-    an_model = AnalyticalLinearRegression()
-
-    N = [10, 20, 50, 100, 200, 500, 1000] # , 2000, 5000, 10000, 20000, 50000, 80000
-    losses     = np.zeros((1,4))
-    pos_errors = np.zeros((1,4))
-    rot_errors = np.zeros((1,4))
-    tot_errors = np.zeros((1,4))
-
-    for n_samples in N:
-        X_train, X_test, y_train, y_test = prep_data(dataset, n_samples)
-
-        # Train Analytic & SGD models 
-        an_train = train(an_model, X_train, y_train)
-        sgd_train = train(sgd_model, X_train, y_train)
-
-        # Predict 
-        y_pred = an_model.predict(X_test)
-        an_test = compute_stats(y_pred, y_test)
-        y_pred = sgd_model.predict(X_test)
-        sgd_test = compute_stats(y_pred, y_test)
-
-        # Store metrics for this training size in each row 
-        metrics = np.hstack((an_train, sgd_train, an_test, sgd_test))
-        losses     = np.vstack((losses,     metrics[0,:]))
-        pos_errors = np.vstack((pos_errors, metrics[1,:]))
-        rot_errors = np.vstack((rot_errors, metrics[2,:]))
-        tot_errors = np.vstack((tot_errors, metrics[3,:]))
-        
+def plot(N, labels, losses, pos_errors, rot_errors, tot_errors):
     fig, axs = plt.subplots(2, 2)
     pos = [x for x in range(len(N))]
-    labels = ['Analytic Training', 'SGD Training', 'Analytic Test', 'SGD Test']
-
     axs[0,0].plot(pos,  losses[1:, :])
     axs[0,0].set_title('Training vs. Test Loss for Least Squares Regression')
     axs[0,0].set_ylabel('Loss')
@@ -92,7 +68,7 @@ if __name__ == "__main__":
 
     axs[1,1].plot(pos,  tot_errors[1:, :])
     axs[1,1].set_title('Training vs. Test Combined Error for Least Squares Regression')
-    axs[1,1].set_ylabel('COmbined Position & Rotation Error')
+    axs[1,1].set_ylabel('Combined Position & Rotation Error')
 
     # Formatting constant for all subplots
     r, c = np.shape(axs)
@@ -100,8 +76,56 @@ if __name__ == "__main__":
         for j in range(r):
             axs[i, j].xaxis.set_ticks(pos)
             axs[i, j].xaxis.set_ticklabels(N)
+            axs[i, j].set_yscale('log')
             axs[i, j].set_xlabel('Number of Training Samples')
             axs[i, j].legend(labels)
+    return fig, axs
+
+if __name__ == "__main__":
+    use_engineered_features = True
+    # Load data
+    dataset = prepare_dataset("data/ur10_dataset.csv")
+    
+    # Initialize models 
+    sgd_model = SGDLinearRegression(learning_rate=0.01)
+    an_model = AnalyticalLinearRegression()
+
+    N = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 80000]
+    if use_engineered_features: 
+        a = 8
+    else: 
+        a=4
+    losses     = np.zeros((1,a))
+    pos_errors = np.zeros((1,a))
+    rot_errors = np.zeros((1,a))
+    tot_errors = np.zeros((1,a))
+
+    for n_samples in N:
+        an_train, sgd_train, an_test, sgd_test = eval_data(dataset, n_samples)
+
+        # Store metrics for this training size in each row 
+        metrics = np.hstack((an_train, sgd_train, an_test, sgd_test))        
+
+        if use_engineered_features:
+            an_train, sgd_train, an_test, sgd_test = eval_data(dataset, n_samples, use_engineered_features=use_engineered_features)
+
+            # Store metrics for this training size in each row 
+            metrics = np.hstack((metrics, an_train, sgd_train, an_test, sgd_test))
+            
+        losses     = np.vstack((losses,     metrics[0,:]))
+        pos_errors = np.vstack((pos_errors, metrics[1,:]))
+        rot_errors = np.vstack((rot_errors, metrics[2,:]))
+        tot_errors = np.vstack((tot_errors, metrics[3,:]))
+        
+    
+    labels = ['Analytic Training', 'SGD Training', 'Analytic Test', 'SGD Test']
+    if use_engineered_features:
+        no_feat = plot(N, labels, losses[:, :4], pos_errors[:, :4], rot_errors[:, :4], tot_errors[:, :4])
+        only_feat = plot(N, labels, losses[:, 4:], pos_errors[:, 4:], rot_errors[:, 4:], tot_errors[:, 4:])
+
+        labels.extend(['Analytic Training w/Feature Engineering', 'SGD Training w/Feature Engineering', 'Analytic Test w/Feature Engineering', 'SGD Test w/Feature Engineering'])
+    all = plot(N, labels, losses, pos_errors, rot_errors, tot_errors)
+    
 
     plt.show()
 
