@@ -6,6 +6,8 @@ from helpers.loss import CustomLoss
 from helpers.metrics import compute_mse, compute_position_error, compute_rotation_error
 from datasets import prepare_dataset
 from visualizer import plot_linear_trajectory
+from sklearn.model_selection import train_test_split
+
 
 
 def convert_to_tensor(data, device="cpu"):
@@ -33,10 +35,10 @@ class MLP(nn.Module):
             All layers are stored in a Sequential container accessible via self.network.
         """
         super(MLP, self).__init__()
-        layers = [2] # At least 1 hidden layer, more possible
+        layers = [3] # At least 1 hidden layer, more possible
 
         self.flatten = nn.Flatten()
-        self.linear_relu_stack = nn.Sequential( # Two hidden layers
+        self.linear_relu_stack = nn.Sequential( # Three hidden layers
             nn.Linear(input_size, hidden_sizes[0]),
             nn.ReLU(),
             nn.Linear(hidden_sizes[0], hidden_sizes[1]),
@@ -53,40 +55,49 @@ class MLP(nn.Module):
 
     def forward(self, x):
         return self.network(x)
+    
+    def divide_data(self, X, y):
+        #70% training, 10% validation, 20% test
+        # We just need to split the 80% X, into (7/8) and (1/8)
+        X_train, X_validate, y_train, y_validate = train_test_split(
+        X, y, test_size=1/8, random_state=42)
+        return X_train, X_validate, y_train, y_validate
 
     def fit(
         self,
         X_train,
         y_train,
-        X_test,
-        y_test,
         lr=0.001,
         batch_size=32,
         epochs=100,
         device="gpu",
         ):
 
+        X_train, X_validate, y_train, y_validate = self.divide_data(X_train, y_train)
+        print("Device: ",device)
         # Convert to tensors
         X_train_tensor = convert_to_tensor(X_train, device)
         y_train_tensor = convert_to_tensor(y_train, device)
-        X_test_tensor = convert_to_tensor(X_test, device)
-        Y_test_tensor = convert_to_tensor(y_test, device)
+        X_validate_tensor = convert_to_tensor(X_validate, device)
+        y_validate_tensor = convert_to_tensor(y_validate, device)
+
 
         # Create data loaders
         train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        test_dataset = TensorDataset(X_test_tensor, Y_test_tensor)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size)
+        validate_dataset = TensorDataset(X_validate_tensor, y_validate_tensor)
+        validate_loader = DataLoader(validate_dataset, batch_size=batch_size)
+
 
         # Initialize model, loss, and optimizer
         criterion = CustomLoss(position_weight=1.0, rotation_weight=1.0)
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr) # not SGD, instead uses Adaptive Moment Estimation
+        optimizer = torch.optim.Adam(self.parameters(), lr=lr) # not SGD, instead uses Adaptive Moment Estimation
 
 
         #### Your CODE STARTS HERE ####
         trainset_size = len(train_dataset)
-        testset_size = len(test_dataset)
-        num_test_batches = len(test_loader)
+        testset_size = len(validate_dataset)
+        num_test_batches = len(validate_loader)
 
         for t in range(epochs):
             print(f"Epoch {t+1}\n--------------")
@@ -95,7 +106,7 @@ class MLP(nn.Module):
 
             for batch, (X, y) in enumerate(train_loader):
                 # Compute prediction and loss
-                pred = model(X) 
+                pred = self(X) 
 
                 loss = criterion(predictions=pred, targets=y)
 
@@ -111,16 +122,14 @@ class MLP(nn.Module):
                     loss, current = loss.item(), batch * batch_size + len(X)
                     print(f"loss: {loss:>7f} [{current:>5d}/{trainset_size:>5d}]")
 
-            # ---
+            # Testing (evaluation) loop
 
-            # Testing loop
-
-            model.eval() # Set model to evaluation mode for batch normalization
+            self.eval() # Set model to evaluation mode for batch normalization
             test_loss, correct = 0, 0
 
             with torch.no_grad(): # Ensures no gradients are computed during testing below
-                for X, y in test_loader:
-                    pred = model(X) # Tensor size of 32, 6 long
+                for X, y in validate_loader:
+                    pred = self(X) # Tensor size of 32, 6 long
                     # print("test pred: ",pred)
                     test_loss += criterion(predictions=pred, targets=y).item()
                     # print("test_loss: ",test_loss)
@@ -134,7 +143,7 @@ class MLP(nn.Module):
 
         #### Your CODE ENDS HERE ####
     
-        return model
+        return self
 
     def predict(self, X, device="cuda"): # Currently unused. Is there a way I can? Or a reason to? May be an alternative to testing loop portion. But the forced convert to tensor line gets in the way.
         X_tensor = convert_to_tensor(X, device)
@@ -155,11 +164,9 @@ if __name__ == "__main__":
     model.fit(
         X_train.values,
         y_train.values,
-        X_test.values,
-        y_test.values,
         lr=0.001,
         batch_size=32,
-        epochs=100,
+        epochs=5,
         device="cuda",
     )
 
