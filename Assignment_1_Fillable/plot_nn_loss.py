@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
         X_train, X_test, y_train, y_test = prep_data(dataset, 80000)
         
-        nn_train, accuracy_list, loss_list = train(model, X_train, y_train, 0.001, 32, 50, "cuda")
+        nn_train, accuracy_list, loss_list = train(model, X_train, y_train, 0.001, 32, 25, "cuda")
         
         accuracy_list = np.delete(accuracy_list, 0, 0)
         loss_list = np.delete(loss_list, 0, 0)
