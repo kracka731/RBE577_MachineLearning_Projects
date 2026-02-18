@@ -81,23 +81,24 @@ class MLP(nn.Module):
         X_validate_tensor = convert_to_tensor(X_validate, device)
         y_validate_tensor = convert_to_tensor(y_validate, device)
 
-
         # Create data loaders
         train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         validate_dataset = TensorDataset(X_validate_tensor, y_validate_tensor)
         validate_loader = DataLoader(validate_dataset, batch_size=batch_size)
 
-
         # Initialize model, loss, and optimizer
         criterion = CustomLoss(position_weight=1.0, rotation_weight=1.0)
         optimizer = torch.optim.Adam(self.parameters(), lr=lr) # not SGD, instead uses Adaptive Moment Estimation
-
 
         #### Your CODE STARTS HERE ####
         trainset_size = len(train_dataset)
         testset_size = len(validate_dataset)
         num_test_batches = len(validate_loader)
+
+        accuracy_list = np.zeros((1,2))
+        loss_list = np.zeros((1,2))
+
 
         for t in range(epochs):
             print(f"Epoch {t+1}\n--------------")
@@ -139,18 +140,23 @@ class MLP(nn.Module):
 
             test_loss /= num_test_batches
             correct /= testset_size
+
+            accuracy_list = np.vstack((accuracy_list, [100*correct,t]))
+            loss_list = np.vstack((loss_list, [test_loss,t]))
+
             print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+
 
         #### Your CODE ENDS HERE ####
     
-        return self
+        return self, accuracy_list, loss_list
 
     def predict(self, X, device="cuda"): # Currently unused. Is there a way I can? Or a reason to? May be an alternative to testing loop portion. But the forced convert to tensor line gets in the way.
         X_tensor = convert_to_tensor(X, device)
         self.eval()
         with torch.no_grad():
             y_pred = self(X_tensor).cpu().numpy()
-        return y_pred   
+        return y_pred
 
 if __name__ == "__main__":
 
@@ -164,9 +170,9 @@ if __name__ == "__main__":
     model.fit(
         X_train.values,
         y_train.values,
-        lr=0.001,
+        lr=0.002,
         batch_size=32,
-        epochs=5,
+        epochs=2,
         device="cuda",
     )
 

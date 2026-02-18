@@ -23,11 +23,11 @@ def train(model, X_train, y_train, lr=0.001, batch_size=32, epochs=100, device="
     # Train model
 
     print("Model type: ",type(model))
-    model.fit(X_train, y_train, lr=lr, batch_size=batch_size, epochs=epochs, device=device)
+    fit_output, accuracy_list, loss_list = model.fit(X_train, y_train, lr=lr, batch_size=batch_size, epochs=epochs, device=device)
     print("Fit done")
     y_pred = model.predict(X_train)
     train_loss = compute_stats(y_pred, y_train)
-    return train_loss
+    return train_loss, accuracy_list, loss_list
 
 def compute_stats(predictions:np.ndarray, targets:np.ndarray):
     """
@@ -56,7 +56,8 @@ if __name__ == "__main__":
     # Set which plot to make.
 
     epoch_graph = False
-    learning_rate_graph = True
+    learning_rate_graph = False
+    epoch_over_time = True
 
     
     if epoch_graph:
@@ -65,7 +66,7 @@ if __name__ == "__main__":
             X_train, X_test, y_train, y_test = prep_data(dataset, n_samples)
 
             # Train Multi-Layer Perceptron model
-            nn_train = train(model, X_train, y_train, 0.001, 32, epochs, "cuda")
+            nn_train, accuracy_list, loss_list  = train(model, X_train, y_train, 0.001, 32, epochs, "cuda")
 
             # Predict 
             y_pred = model.predict(X_test)
@@ -85,7 +86,8 @@ if __name__ == "__main__":
             X_train, X_test, y_train, y_test = prep_data(dataset, n_samples)
 
             # Train Multi-Layer Perceptron model
-            nn_train = train(model, X_train, y_train, rate, 32, 15, "cuda")
+            nn_train, accuracy_list, loss_list  = train(model, X_train, y_train, rate, 32, 15, "cuda")
+
 
             # Predict 
             y_pred = model.predict(X_test)
@@ -98,10 +100,42 @@ if __name__ == "__main__":
             pos_errors = np.vstack((pos_errors, metrics[1,:]))
             rot_errors = np.vstack((rot_errors, metrics[2,:]))
             tot_errors = np.vstack((tot_errors, metrics[3,:]))
+            
+
+    elif epoch_over_time:
+        X_train, X_test, y_train, y_test = prep_data(dataset, 80000)
+        
+        nn_train, accuracy_list, loss_list = train(model, X_train, y_train, 0.001, 32, 5, "cuda")
+        
+        accuracy_list = np.delete(accuracy_list, 0, 0)
+        loss_list = np.delete(loss_list, 0, 0)
+
+        print("accuracy list: ", accuracy_list)
+        print("loss_list: ", loss_list)
+
+        y_pred = model.predict(X_test)
+
+        nn_test = compute_stats(y_pred, y_test)
+
+
+        # Store metrics for this training size in each row 
+        metrics = np.hstack((nn_train, nn_test))
+        losses     = np.vstack((losses,     metrics[0,:]))
+        pos_errors = np.vstack((pos_errors, metrics[1,:]))
+        rot_errors = np.vstack((rot_errors, metrics[2,:]))
+        tot_errors = np.vstack((tot_errors, metrics[3,:]))
 
             
     fig, axs = plt.subplots(2, 2)
-    pos = [x for x in range(len(epoch_counts))]
+    if epoch_graph:
+        pos = [x for x in range(len(epoch_counts))]
+    elif learning_rates:
+        pos = [x for x in range(len(learning_rates))]
+    elif epoch_over_time:
+        pos = [x for x in range(5)]
+    else:
+        pos = "Hi"
+
     labels = ['MLP Training', 'MLP Test']
 
     axs[0,0].plot(pos,  losses[1:, :])
@@ -131,6 +165,9 @@ if __name__ == "__main__":
             elif learning_rate_graph:
                 axs[i, j].xaxis.set_ticklabels(learning_rates)
                 axs[i, j].set_xlabel('Learning Rate')
+            elif epoch_over_time:
+                axs[i, j].xaxis.set_ticklabels(accuracy_list[:,1])
+                axs[i, j].set_xlabel('Epoch')
 
             axs[i, j].legend(labels)
 
