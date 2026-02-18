@@ -127,8 +127,8 @@ if __name__ == "__main__":
     #############Your CODE STARTS HERE##############
 
     # Load data
-    # X_train, X_test, y_train, y_test = prepare_dataset("data/ur10_dataset.csv")
-    X_train, X_test, y_train, y_test = prepare_dataset("data/ur10_linear_dataset.csv")
+    X_train, X_test, y_train, y_test = prepare_dataset("data/ur10_dataset.csv")
+    # X_train, X_test, y_train, y_test = prepare_dataset("data/ur10_linear_dataset.csv")
 
     # Convert to numpy
     X_train = X_train.values
