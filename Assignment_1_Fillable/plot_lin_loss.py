@@ -51,8 +51,9 @@ def compute_stats(predictions:np.ndarray, targets:np.ndarray):
     tot_error = pos_error + rot_error
     return np.array([[loss], [pos_error], [rot_error], [tot_error]])
 
-def plot(pos, labels, losses, pos_errors, rot_errors, tot_errors):
+def plot(N, labels, losses, pos_errors, rot_errors, tot_errors):
     fig, axs = plt.subplots(2, 2)
+    pos = [x for x in range(len(N))]
     axs[0,0].plot(pos,  losses[1:, :])
     axs[0,0].set_title('Training vs. Test Loss for Least Squares Regression')
     axs[0,0].set_ylabel('Loss')
@@ -75,12 +76,13 @@ def plot(pos, labels, losses, pos_errors, rot_errors, tot_errors):
         for j in range(r):
             axs[i, j].xaxis.set_ticks(pos)
             axs[i, j].xaxis.set_ticklabels(N)
+            axs[i, j].set_yscale('log')
             axs[i, j].set_xlabel('Number of Training Samples')
             axs[i, j].legend(labels)
     return fig, axs
 
 if __name__ == "__main__":
-    use_engineered_features = False
+    use_engineered_features = True
     # Load data
     dataset = prepare_dataset("data/ur10_dataset.csv")
     
@@ -115,13 +117,14 @@ if __name__ == "__main__":
         rot_errors = np.vstack((rot_errors, metrics[2,:]))
         tot_errors = np.vstack((tot_errors, metrics[3,:]))
         
-        
-    pos = [x for x in range(len(N))]
+    
     labels = ['Analytic Training', 'SGD Training', 'Analytic Test', 'SGD Test']
     if use_engineered_features:
-        a = plot(pos, labels, losses[:, 4:], pos_errors[:, 4:], rot_errors[:, 4:], tot_errors[:, 4:])
+        no_feat = plot(N, labels, losses[:, :4], pos_errors[:, :4], rot_errors[:, :4], tot_errors[:, :4])
+        only_feat = plot(N, labels, losses[:, 4:], pos_errors[:, 4:], rot_errors[:, 4:], tot_errors[:, 4:])
+
         labels.extend(['Analytic Training w/Feature Engineering', 'SGD Training w/Feature Engineering', 'Analytic Test w/Feature Engineering', 'SGD Test w/Feature Engineering'])
-    b = plot(pos, labels, losses, pos_errors, rot_errors, tot_errors)
+    all = plot(N, labels, losses, pos_errors, rot_errors, tot_errors)
     
 
     plt.show()
