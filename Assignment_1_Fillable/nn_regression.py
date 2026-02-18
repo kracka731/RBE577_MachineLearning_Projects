@@ -141,8 +141,8 @@ class MLP(nn.Module):
             test_loss /= num_test_batches
             correct /= testset_size
 
-            accuracy_list = np.vstack((accuracy_list, [100*correct,t]))
-            loss_list = np.vstack((loss_list, [test_loss,t]))
+            accuracy_list = np.vstack((accuracy_list, [100*correct,t+1]))
+            loss_list = np.vstack((loss_list, [test_loss,t+1]))
 
             print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 

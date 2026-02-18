@@ -46,15 +46,15 @@ if __name__ == "__main__":
     # Initialize models 
     model = MLP().to("cuda")
 
-    epoch_counts = [1, 2, 5, 10, 25, 50, 75, 100]
+    # epoch_counts = [1, 2, 5, 10, 25, 50, 75, 100]
+    epoch_counts = [1, 2]
     learning_rates = [0.0005, 0.001, 0.002, 0.005, 0.01, 0.05]
     losses     = np.zeros((1,2))
     pos_errors = np.zeros((1,2))
     rot_errors = np.zeros((1,2))
     tot_errors = np.zeros((1,2))
 
-    # Set which plot to make.
-
+    #TODO Set which plot to make.
     epoch_graph = False
     learning_rate_graph = False
     epoch_over_time = True
@@ -103,9 +103,10 @@ if __name__ == "__main__":
             
 
     elif epoch_over_time:
+
         X_train, X_test, y_train, y_test = prep_data(dataset, 80000)
         
-        nn_train, accuracy_list, loss_list = train(model, X_train, y_train, 0.001, 32, 5, "cuda")
+        nn_train, accuracy_list, loss_list = train(model, X_train, y_train, 0.001, 32, 50, "cuda")
         
         accuracy_list = np.delete(accuracy_list, 0, 0)
         loss_list = np.delete(loss_list, 0, 0)
@@ -126,50 +127,72 @@ if __name__ == "__main__":
         tot_errors = np.vstack((tot_errors, metrics[3,:]))
 
             
-    fig, axs = plt.subplots(2, 2)
+
     if epoch_graph:
         pos = [x for x in range(len(epoch_counts))]
-    elif learning_rates:
+    elif learning_rate_graph:
         pos = [x for x in range(len(learning_rates))]
     elif epoch_over_time:
-        pos = [x for x in range(5)]
+        pos = [x for x in range(len(accuracy_list[:,0]))]
     else:
         pos = "Hi"
+        print("sup")
 
     labels = ['MLP Training', 'MLP Test']
 
-    axs[0,0].plot(pos,  losses[1:, :])
-    axs[0,0].set_title('Training vs. Test Loss for Multi-Layer Perceptron')
-    axs[0,0].set_ylabel('Loss')
+    # print("pos size:",np.size(pos))
+    # print("pos: ")
+    # print("losses size: ",np.size(losses))
+    if not epoch_over_time:
 
-    axs[0,1].plot(pos,  pos_errors[1:, :])
-    axs[0,1].set_title('Training vs. Test Position Error for Multi-Layer Perceptron')
-    axs[0,1].set_ylabel('Position Error')
+        fig, axs = plt.subplots(2, 2)
 
-    axs[1,0].plot(pos,  rot_errors[1:, :])
-    axs[1,0].set_title('Training vs. Test Rotation Error for Multi-Layer Perceptron')
-    axs[1,0].set_ylabel('Rotation Error')
+        axs[0,0].plot(pos,  losses[1:, :])
+        axs[0,0].set_title('Training vs. Test Loss for Multi-Layer Perceptron')
+        axs[0,0].set_ylabel('Loss')
 
-    axs[1,1].plot(pos,  tot_errors[1:, :])
-    axs[1,1].set_title('Training vs. Test Combined Error for Multi-Layer Perceptron')
-    axs[1,1].set_ylabel('COmbined Position & Rotation Error')
+        axs[0,1].plot(pos,  pos_errors[1:, :])
+        axs[0,1].set_title('Training vs. Test Position Error for Multi-Layer Perceptron')
+        axs[0,1].set_ylabel('Position Error')
 
-    # Formatting constant for all subplots
-    r, c = np.shape(axs)
-    for i in range(c): 
-        for j in range(r):
-            axs[i, j].xaxis.set_ticks(pos)
-            if epoch_graph:
-                axs[i, j].xaxis.set_ticklabels(epoch_counts)
-                axs[i, j].set_xlabel('Number of epochs')
-            elif learning_rate_graph:
-                axs[i, j].xaxis.set_ticklabels(learning_rates)
-                axs[i, j].set_xlabel('Learning Rate')
-            elif epoch_over_time:
-                axs[i, j].xaxis.set_ticklabels(accuracy_list[:,1])
-                axs[i, j].set_xlabel('Epoch')
+        axs[1,0].plot(pos,  rot_errors[1:, :])
+        axs[1,0].set_title('Training vs. Test Rotation Error for Multi-Layer Perceptron')
+        axs[1,0].set_ylabel('Rotation Error')
 
-            axs[i, j].legend(labels)
+        axs[1,1].plot(pos,  tot_errors[1:, :])
+        axs[1,1].set_title('Training vs. Test Combined Error for Multi-Layer Perceptron')
+        axs[1,1].set_ylabel('COmbined Position & Rotation Error')
+
+                # Formatting constant for all subplots
+        r, c = np.shape(axs)
+        for i in range(c): 
+            for j in range(r):
+                axs[i, j].xaxis.set_ticks(pos)
+                if epoch_graph:
+                    axs[i, j].xaxis.set_ticklabels(epoch_counts)
+                    axs[i, j].set_xlabel('Number of epochs')
+                elif learning_rate_graph:
+                    axs[i, j].xaxis.set_ticklabels(learning_rates)
+                    axs[i, j].set_xlabel('Learning Rate')
+                axs[i, j].legend(labels)
+    elif epoch_over_time:
+
+        fig, axs = plt.subplots(2,1)
+
+        axs[0].plot(pos, accuracy_list[:,0])
+        axs[0].set_title('Training vs. Test Accuracy for Multi-Layer Perceptron')
+        axs[0].set_ylabel('Accuracy')
+
+        axs[1].plot(pos, loss_list[:,0])
+        axs[1].set_title('Training vs. Test Loss for Multi-Layer Perceptron')
+        axs[1].set_ylabel('Loss')
+
+        for i in range(2): 
+            print("i: ",i)
+            axs[i].xaxis.set_ticks(pos)
+            axs[i].xaxis.set_ticklabels(accuracy_list[:,1])
+            axs[i].set_xlabel('Epoch')
+            axs[i].legend(labels)
 
     plt.show()
 
