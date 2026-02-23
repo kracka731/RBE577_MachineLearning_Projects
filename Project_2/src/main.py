@@ -81,6 +81,7 @@ def main():
     with torch.no_grad():
         # Move tensors to appropriate device
         # Do forward and calculate error
+        pass
 
 
 if __name__ == "__main__":
