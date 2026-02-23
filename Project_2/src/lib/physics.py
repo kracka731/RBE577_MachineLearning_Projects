@@ -25,7 +25,7 @@ class PushPhysics:
         # Extract object properties from config
         print(f"phys objs {physics_config.keys()}")
         mass, size, inertia_factor, _, _ = physics_config.keys()
-        
+
         # Set simulation parameters
         instance = PushPhysics(mass, size, inertia_factor)
         return instance
@@ -65,10 +65,10 @@ class PushPhysics:
         theta = rotation
 
         # Loop through simulation steps to update states
+        delta_t = duration / steps
         for t in range(2, steps+1):
-            v_i = v(t)
+            v_i = v(t*delta_t)
             torque = self.mass * v_i * side 
-            delta_t = t - (t-1)
 
             # Angular update
             alpha = torque / self.inertia # angular acceleration 
