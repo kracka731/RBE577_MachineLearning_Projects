@@ -12,7 +12,8 @@ class NNModel(nn.Module):
 
     def __init__(self, input_dim: int, output_dim: int, hidden_dims: List[int]):
         super().__init__()
-        layers = []
+        layers = [] 
+        # Set up layers (6 hidden layers according to hidden_dims)
         prev_dim = input_dim
         for hidden_dim in hidden_dims:
             layers.extend([nn.Linear(prev_dim, hidden_dim), nn.ReLU()])
@@ -20,12 +21,51 @@ class NNModel(nn.Module):
         layers.append(nn.Linear(prev_dim, output_dim))
         self.layers = nn.Sequential(*layers)
 
+        # Define an MLP with at least one hidden layer. 
+        # Train the network using the given dataset.
+        # Compute and visualize loss curves.
+        # Compare the network's performance with the physics model.
+
+        # models.py used in lib folder
+        # custom.yaml in config
+        
+        # input data: x,y,theta,T,theta_push,d,D (7)
+        # output data: x,y,theta (3)
+
+    def forward(self, x):
+
+        x = self.flatten
+
+    def loss(self, predictions, targets):
+        # split into [x,y] and [theta]
+        pos_pred, rot_pred = predictions[:,:1], predictions[:,2]
+        pos_true, rot_true = targets[:,:1], targets[:,2]
+
+        # Calculate MSE for position and rotation separately
+        pos_loss = torch.mean((pos_pred - pos_true) ** 2)
+        rot_loss = torch.mean((rot_pred - rot_true) ** 2)
+
+        # Combine losses with weights (just 1 for now)
+        total_loss = 1*pos_loss + 1*rot_loss
+        return total_loss 
+
+    def accuracy(self, validate_loader, pred):
+        test_loss, correct = 0, 0
+        for X, y in validate_loader:
+            test_loss += self.loss(predictions=pred, targets=y).item()
+            correct += (pred.argmax(1) == y.argmax(1)).type(torch.float).sum().item()
+
+        # test_loss /= 
+        # Figure out
+
+
+
     # TODO: Implement forward function
     # TODO: Implement loss function
     # TODO: Implement accuracy function
 
 
-class NNPhysicsModel(BaseNet):
+class NNPhysicsModel(NNModel):
     """Neural network with physics knowledge"""
 
     def __init__(

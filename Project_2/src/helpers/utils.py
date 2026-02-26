@@ -11,8 +11,11 @@ def load_data(config) -> Tuple[np.ndarray, np.ndarray]:
     x_path = os.path.join(base_path, config.data["train_x"])
     y_path = os.path.join(base_path, config.data["train_y"])
 
-    x_data = np.load(x_path)
-    y_data = np.load(y_path)
+    # Initial state is [0,0,0], and push duration is in .yaml file
+    x_data = np.load(x_path) # [theta_push, d, D] : push parameters
+    y_data = np.load(y_path) # [x_f, y_f, theta_f] : final state
+    # print("x:",x_data)
+    # print("y: ",y_data)
     return x_data, y_data
 
 
