@@ -93,12 +93,32 @@ class PushPlanner:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # TODO: Initialize models
+        physics_config = model_config["physics"]
+        physics = PushPhysics.from_config(physics_config)
+
+        net_config = self.model_config["network"]
+        self.push_model = NNPhysicsModel(net_config["input_dim"], net_config["task_dim"], net_config["hidden_dims"], physics)
+        
         # TODO: Move models to device
+        self.push_model = self.push_model.to(self.device)
+
         # TODO: Setup optimizers
+        learning_rate = self.model_config["optimizer"]["learning_rate"]
+        self.loss = nn.MSELoss()
+        self.optimizer = torch.optim.Adam(self.push_model.parameters(), lr=learning_rate)
+
 
     # TODO: Implement optimize_push function
+    def optimize_push(self):
+        pass
+
     # TODO: Implement plan_push function
+    def plan_push(self):
+        pass
+
     # TODO: Implement train_epoch function
+    def train_epoch(self):
+        pass
 
 
 class PushNetFactory:

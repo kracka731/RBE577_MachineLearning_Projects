@@ -60,9 +60,7 @@ class PushPhysics:
         v = lambda t: v_max * (0.5*np.sin(((2*np.pi*t)/duration) - (np.pi/2)) + 0.5)
 
         # Initialize states (x, y, theta)
-        x_local = np.cos(rotation)
-        y_local = np.sin(rotation)
-        theta = rotation
+        x_local, y_local, theta = 0
 
         # Loop through simulation steps to update states
         delta_t = duration / steps
