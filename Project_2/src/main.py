@@ -11,6 +11,8 @@ from helpers.utils import (
 from helpers.config import load_config
 from tqdm import tqdm
 from colorama import init, Fore, Style
+import os
+
 
 # Initialize colorama
 init()
@@ -34,7 +36,7 @@ def print_error(text: str):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train push planning model")
-    parser.add_argument("--config", type=str, default=None, help="Path to config file")
+    parser.add_argument("--config", type=str, default=f"{os.path.dirname(os.path.abspath(__file__))}/config/custom.yaml", help="Path to config file")
     parser.add_argument(
         "--checkpoint",
         type=str,
@@ -48,6 +50,7 @@ def main():
     # Parse command line arguments
     args = parse_args()
 
+
     # Load configuration
     config = load_config(args.config)
     device = config.get_device()
@@ -60,14 +63,21 @@ def main():
 
     # ToDO: Call Dataloader
 
+    loaded_dataset = prepare_dataloader(x_data, y_data, config)
+    print("Loaded Dataset: ",loaded_dataset)
+
     # ToDO: Call Physics Push Planner
 
     print_header("Starting Training")
+    #pbar is progress bar: number of epochs
     pbar = tqdm(range(config.training["num_epochs"]), desc="Training Progress")
 
     # ToDO: Implement training loop
     for epoch in pbar:
-        ...
+        # print(f"Epoch {epoch+1}\n------------")
+        pass
+
+        # for batch, (X, y) in enumerate()
 
     print_success("\nTraining completed!")
 
