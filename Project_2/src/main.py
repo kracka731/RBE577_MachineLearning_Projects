@@ -12,7 +12,7 @@ from helpers.config import load_config
 from tqdm import tqdm
 from colorama import init, Fore, Style
 import os
-
+from lib.physics import PushPhysics
 
 # Initialize colorama
 init()
@@ -63,13 +63,12 @@ def main():
     print(f"row 1 of x: {x_data[1, :]}")
 
     # ToDO: Call Dataloader
-    dataloader = prepare_dataloader(x_data, y_data, config)
-
     loaded_dataset = prepare_dataloader(x_data, y_data, config)
     print("Loaded Dataset: ",loaded_dataset)
 
     # ToDO: Call Physics Push Planner
-    model = PushPlanner() #TODO: add inputs to initialization
+    physics = PushPhysics.from_config(config.model['physics'])
+    # model = PushPlanner() #TODO: add inputs to initialization
 
     print_header("Starting Training")
     #pbar is progress bar: number of epochs
@@ -86,6 +85,11 @@ def main():
 
     # Test prediction
     print_header("Testing Prediction")
+    
+    x, y = loaded_dataset.dataset[0:32]
+    predictions = physics.compute_motion(x)
+    mse = torch.mean((predictions - y) ** 2)
+    print(f"MSE for one batch: {mse}")
 
     # ToDo: Test the Model
 
