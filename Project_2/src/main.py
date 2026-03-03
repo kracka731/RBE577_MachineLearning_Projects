@@ -60,13 +60,16 @@ def main():
     print_header("Loading Data")
     x_data, y_data = load_data(config)
     print_info(f"Loaded data shapes: x={x_data.shape}, y={y_data.shape}")
+    print(f"row 1 of x: {x_data[1, :]}")
 
     # ToDO: Call Dataloader
+    dataloader = prepare_dataloader(x_data, y_data, config)
 
     loaded_dataset = prepare_dataloader(x_data, y_data, config)
     print("Loaded Dataset: ",loaded_dataset)
 
     # ToDO: Call Physics Push Planner
+    model = PushPlanner() #TODO: add inputs to initialization
 
     print_header("Starting Training")
     #pbar is progress bar: number of epochs
