@@ -1,6 +1,6 @@
 import argparse
 import torch
-from lib.models import PushPlanner
+from lib.models import PushPlanner, NNModel
 from helpers.utils import (
     load_data,
     prepare_dataloader,
@@ -45,8 +45,8 @@ def parse_args():
     )
     return parser.parse_args()
 
-
 def main():
+
     # Parse command line arguments
     args = parse_args()
 
@@ -60,27 +60,44 @@ def main():
     print_header("Loading Data")
     x_data, y_data = load_data(config)
     print_info(f"Loaded data shapes: x={x_data.shape}, y={y_data.shape}")
-    print(f"row 1 of x: {x_data[1, :]}")
-
-    # ToDO: Call Dataloader
-    dataloader = prepare_dataloader(x_data, y_data, config)
+    # print(f"row 1 of x: {x_data[1, :]}")
+    x_rows, x_cols = x_data.shape
+    y_rows, y_cols = y_data.shape
+    # dataloader = prepare_dataloader(x_data, y_data, config)
 
     loaded_dataset = prepare_dataloader(x_data, y_data, config)
     print("Loaded Dataset: ",loaded_dataset)
 
     # ToDO: Call Physics Push Planner
-    model = PushPlanner() #TODO: add inputs to initialization
+    # model = PushPlanner() #TODO: add inputs to initialization
 
     print_header("Starting Training")
     #pbar is progress bar: number of epochs
     pbar = tqdm(range(config.training["num_epochs"]), desc="Training Progress")
 
+    nn_model = NNModel(input_dim=x_cols,output_dim=y_cols,hidden_dims=[32, 64, 128, 128, 64, 32])
+
+    optimizer = torch.optim.Adam(nn_model.parameters(), lr=0.001)
+
     # ToDO: Implement training loop
     for epoch in pbar:
         # print(f"Epoch {epoch+1}\n------------")
-        pass
 
-        # for batch, (X, y) in enumerate()
+        for batch, (X, y) in enumerate(loaded_dataset):
+            pred = nn_model(X)
+            # print("pred: ",pred)
+            loss = nn_model.loss(predictions=pred, targets=y)
+            print("loss: ",loss)
+
+            #Deposit gradients of the loss w.r.t. each parameter
+            #through backpropogation
+            loss.backward()
+
+            optimizer.step()
+            optimizer.zero_grad()
+
+            pass
+
 
     print_success("\nTraining completed!")
 

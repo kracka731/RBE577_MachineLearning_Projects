@@ -21,6 +21,8 @@ class NNModel(nn.Module):
         layers.append(nn.Linear(prev_dim, output_dim))
         self.layers = nn.Sequential(*layers)
 
+        self.flatten = nn.Flatten()
+
         # Define an MLP with at least one hidden layer. 
         # Train the network using the given dataset.
         # Compute and visualize loss curves.
@@ -33,8 +35,9 @@ class NNModel(nn.Module):
         # output data: x,y,theta (3)
 
     def forward(self, x):
-
-        x = self.flatten
+        x = self.flatten(x)
+        logits = self.layers(x)
+        return logits
 
     def loss(self, predictions, targets):
         # split into [x,y] and [theta]
@@ -52,17 +55,11 @@ class NNModel(nn.Module):
     def accuracy(self, validate_loader, pred):
         test_loss, correct = 0, 0
         for X, y in validate_loader:
-            test_loss += self.loss(predictions=pred, targets=y).item()
+            # test_loss += self.loss(predictions=pred, targets=y).item()
             correct += (pred.argmax(1) == y.argmax(1)).type(torch.float).sum().item()
 
-        # test_loss /= 
-        # Figure out
-
-
-
-    # TODO: Implement forward function
-    # TODO: Implement loss function
-    # TODO: Implement accuracy function
+        correct /= len(pred)
+        return 100*correct
 
 
 class NNPhysicsModel(NNModel):
