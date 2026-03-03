@@ -64,8 +64,6 @@ def split_data(X, y, train_percent, valid_percent):
     y_valid = y[num_train+1:num_valid+num_train,:]
     y_test = y[num_valid+num_train+1:num_valid+num_train+num_test, :]
 
-
-    pass
     return x_train, x_valid, x_test, y_train, y_valid, y_test
 
     
@@ -96,76 +94,54 @@ def main():
 
     loaded_train_dataset = prepare_dataloader(x_train, y_train, config)
     loaded_valid_dataset = prepare_dataloader(x_validate, y_validate, config)
-
+    loaded_test_dataset  = prepare_dataloader(x_test, y_test, config)
 
 
     # print("Loaded Train Dataset: ",loaded_train_dataset)
 
     # ToDO: Call Physics Push Planner
-    # model = PushPlanner() #TODO: add inputs to initialization
+    planner = PushPlanner(config.model, config.physics_sampling)
 
     print_header("Starting Training")
     #pbar is progress bar: number of epochs
     pbar = tqdm(range(config.training["num_epochs"]), desc="Training Progress")
 
-    #TODO Figure out how to source these parameters instead from the config file
-    nn_model = NNModel(input_dim=x_cols,output_dim=y_cols,hidden_dims=[32, 64, 128, 128, 64, 32])
-
-    optimizer = torch.optim.Adam(nn_model.parameters(), lr=0.001)
-
     # ToDO: Implement training loop
+    accuracy_list = []
+    loss_list = []
     for epoch in pbar:
         # print(f"Epoch {epoch+1}\n------------")
 
+        # TODO: use planner.train_epoch() instead???
         for batch, (X, y) in enumerate(loaded_train_dataset):
-            pred = nn_model(X)
+            X, y = X.to(device), y.to(device)
+            pred = planner.model(X)
             # print("pred: ",pred)
-            loss = nn_model.loss(predictions=pred, targets=y)
+            loss = planner.loss(predictions=pred, targets=y)
             # print("loss: ",loss)
 
             #Deposit gradients of the loss w.r.t. each parameter
             #through backpropogation
             loss.backward()
 
-            optimizer.step()
-            optimizer.zero_grad()
+            planner.optimize_push()
+
+        # Test model with validation set to ensure learning
+        test_loss, correct = planner.test(loaded_valid_dataset)
+
+        accuracy_list.extend([100*correct,int(epoch+1)])
+        loss_list.extend([test_loss,int(epoch+1)])
 
         # Test prediction
-    print_header("Testing Prediction")
-
-    nn_model.eval()
-    accuracy_list = []
-    loss_list = []
-    test_loss, correct = 0, 0
-
-    with torch.no_grad():
-        for X, y in loaded_valid_dataset:
-            pred = nn_model(X)
-
-            test_loss += nn_model.loss(predictions=pred, targets=y).item()
-
-            correct += (pred.argmax(1) == y.argmax(1)).type(torch.float).sum().item()
-
-    test_loss /= len(loaded_valid_dataset)
-    correct /= len(x_validate)
-
-    accuracy_list.extend([100*correct,int(epoch+1)])
-    loss_list.extend([test_loss,int(epoch+1)])
-
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+        # print_header("Testing Prediction")
     
 
     print_success("\nTraining completed!")
-
-
     # ToDo: Test the Model
+    test_loss, accuracy = planner.test(loaded_test_dataset)
+    print(f"overall avg loss is {test_loss} at {100*accuracy}% accuracy")
 
     # ToDO: Make Some predictions with model
-    # Make predictions with the model
-    with torch.no_grad():
-        # Move tensors to appropriate device
-        # Do forward and calculate error
-        pass
 
 
 if __name__ == "__main__":
