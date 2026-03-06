@@ -1,6 +1,6 @@
 import argparse
 import torch
-from lib.models import PushPlanner, NNModel
+from lib.models import PushPlanner, NNModel, NNPhysicsModel
 from helpers.utils import (
     load_data,
     prepare_dataloader,
@@ -111,15 +111,15 @@ def nn_train(config, planner, loaders):
 
 
 def nn_phys_train(config, planner, x_data, y_data):
-    loaded_dataset = prepare_dataloader(x_data, y_data, config)
-    # print("Loaded Dataset: ",loaded_dataset)
-
-    phys_pred_float = planner.phys_first(loaded_dataset)
+    combined_x = x_data
+    phys_pred_float = planner.physics.compute_motion(torch.from_numpy(x_data))
+    combined_x = np.hstack([x_data, phys_pred_float.cpu().numpy()])
+    print(f"input shape {combined_x.shape}")
 
     # print(f"physics pred: \n {phys_pred_float}")
 
     # Cut into training and validation sets.
-    x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(phys_pred_float, y_data, 0.7, 0.1)
+    x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(combined_x, y_data, 0.7, 0.1)
 
     train_dataloader = prepare_dataloader(x_train, y_train, config)
     valid_dataloader = prepare_dataloader(x_validate, y_validate, config)

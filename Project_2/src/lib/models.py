@@ -74,7 +74,12 @@ class NNPhysicsModel(NNModel):
         self.requires_grad = True
 
     # TODO: Implement forward function
-
+    def forward(self, x):
+        # phys_pred = self.physics.compute_motion(x)
+        # x = torch.cat([x, phys_pred], dim=1)
+        base_pred = super().forward(x)
+        # print(f"type of p {type(phys_pred)} and base {type(base_pred)}")
+        return base_pred #+ phys_pred
 
 
 class PushPlanner:
@@ -143,10 +148,7 @@ class PushPlanner:
         pass
 
     def train_epoch(self, loaded_data, batch_size):
-
-        size = len(loaded_data.dataset)
         self.model.train()        
-
 
         for batch, (X, y) in enumerate(loaded_data):
             # print("Batch: ",batch)
@@ -167,7 +169,7 @@ class PushPlanner:
 
     def phys_first(self, loaded_dataset):
         physics_predictions = self.physics.physics_pred(loaded_dataset)
-        phys_pred_float = np.zeros((len(physics_predictions), len(physics_predictions[0])) )
+        phys_pred_float = torch.zeros((len(physics_predictions), len(physics_predictions[0])) )
 
         # Iterate through prediction tensors and convert into floats
         # Probably not the most efficient method, but I don't notice the time

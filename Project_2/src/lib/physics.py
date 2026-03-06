@@ -45,6 +45,8 @@ class PushPhysics:
         Returns:
             [batch_size, 3] tensor of [x, y, theta] final states
         """
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        push_params = push_params.to(device)
         # Define motion duration and steps
         if duration is None: 
             duration = self._push_duration
@@ -59,10 +61,13 @@ class PushPhysics:
 
         # Compute velocity profile
         v_max = 2*distance / duration
-        v = lambda t: v_max * (0.5*np.sin(((2*np.pi*t)/duration) - (np.pi/2)) + 0.5)
+        def v(t):
+            return v_max * (0.5 * np.sin(((2*torch.pi*t)/duration) - (torch.pi/2)) + 0.5)
 
         # Initialize states (x, y, theta)
-        x_local = y_local = theta = torch.zeros(rotation.shape)
+        x_local = torch.zeros_like(rotation)
+        y_local = torch.zeros_like(rotation)
+        theta = torch.zeros_like(rotation)
 
         # Loop through simulation steps to update states
         delta_t = duration / steps
