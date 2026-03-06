@@ -169,11 +169,41 @@ def main():
         loaded_dataset = prepare_dataloader(x_data, y_data, config)
         print("Loaded Dataset: ",loaded_dataset)
 
-        phyics_predictions = physics_pred(config, planner, loaded_dataset)
+        physics_predictions = physics_pred(config, planner, loaded_dataset)
 
     elif args.model == "nn+physics":
         # Perform same process as nn above, but use physics model as input to the nn
-        pass
+        
+        x_data, y_data = load_data(config)
+        print(f"x_data: \n {x_data}")
+
+        loaded_dataset = prepare_dataloader(x_data, y_data, config)
+        print("Loaded Dataset: ",loaded_dataset)
+
+        physics_predictions = physics_pred(config, planner, loaded_dataset)
+        phys_pred_float = np.zeros((len(physics_predictions), len(physics_predictions[0])) )
+
+        # Iterate through prediction tensors and convert into floats
+        # Probably not the most efficient method, but I don't notice the time
+        for row in range(len(physics_predictions)): # for each row
+            for col in range(len(physics_predictions[0])): # and each column in said row
+                tensor = physics_predictions[row][col]
+
+                phys_pred_float[row][col] = tensor.item()
+
+        print(f"physics pred: \n {phys_pred_float}")
+
+        # Cut into training and validation sets.
+        x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(phys_pred_float, y_data, 0.7, 0.1)
+
+        train_dataloader = prepare_dataloader(x_train, y_train, config)
+        valid_dataloader = prepare_dataloader(x_validate, y_validate, config)
+        test_dataloader  = prepare_dataloader(x_test, y_test, config)
+
+        loaders = [train_dataloader, valid_dataloader, test_dataloader]
+
+        nn_train(config, planner, loaders)
+
 
     else:
         sys.exit(f"(System Exit) Invalid model entered: {args.model}")
