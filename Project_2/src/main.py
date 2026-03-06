@@ -109,48 +109,12 @@ def nn_train(config, planner, loaders):
     test_loss, accuracy = planner.test(test_dload)
     print(f"overall avg loss is {test_loss} at {100*accuracy}% accuracy")
 
-def physics_pred(config, planner, loaded_dataset):
-
-    # ToDO: Call Physics Push Planner
-    physics = PushPhysics.from_config(config.model['physics'])
-    # model = PushPlanner() #TODO: add inputs to initialization
-
-    # Test prediction
-    print_header("Testing Prediction")
-    
-    # x, y = loaded_dataset.dataset[0:32]
-    pred_list = []
-    mse_list = []
-    for batch, (X, y) in enumerate(loaded_dataset):
-        # print(f"batch: {batch}")
-        predictions = physics.compute_motion(X)
-        # print(f"predictions: {predictions}")
-        mse = torch.mean((predictions - y) ** 2)
-        # print(f"MSE for one batch: {mse}")
-
-        pred_list.extend(predictions)
-        mse_list.extend([mse.item()])
-
-    # print(len(pred_list))
-    avg_mse = sum(mse_list) / len(mse_list)
-    print(f"avg_mse: {avg_mse}")
-
-    return pred_list
 
 def nn_phys_train(config, planner, x_data, y_data):
     loaded_dataset = prepare_dataloader(x_data, y_data, config)
     # print("Loaded Dataset: ",loaded_dataset)
 
-    physics_predictions = physics_pred(config, planner, loaded_dataset)
-    phys_pred_float = np.zeros((len(physics_predictions), len(physics_predictions[0])) )
-
-    # Iterate through prediction tensors and convert into floats
-    # Probably not the most efficient method, but I don't notice the time
-    for row in range(len(physics_predictions)): # for each row
-        for col in range(len(physics_predictions[0])): # and each column in said row
-            tensor = physics_predictions[row][col]
-
-            phys_pred_float[row][col] = tensor.item()
+    phys_pred_float = planner.phys_first(loaded_dataset)
 
     # print(f"physics pred: \n {phys_pred_float}")
 
@@ -163,43 +127,7 @@ def nn_phys_train(config, planner, x_data, y_data):
 
     loaders = [train_dataloader, valid_dataloader, test_dataloader]
 
-    [train_dload, valid_dload, test_dload] = loaders
-
-    print_header("Starting Neural Network Training")
-    
-    #pbar is progress bar: number of epochs
-    pbar = tqdm(range(config.training["num_epochs"]), desc="Training Progress")
-
-    accuracy_list = []
-    loss_list = []
-    avg_acc = 0.0
-    avg_loss = 1.0
-
-    for epoch in pbar:
-
-        planner.train_epoch(train_dload, config.data["batch_size"])
-        
-        # Test model with validation set to have option to check learning
-        # Doesn't make any specific changes as is due to no checkpoint saving
-        test_loss, correct = planner.test(valid_dload)
-
-        accuracy_list.extend([100*correct])
-        loss_list.extend([test_loss])
-
-        avg_acc = sum(accuracy_list) / len(accuracy_list)
-        avg_loss = sum(loss_list) / len(loss_list)
-
-        # Every 10 epochs, give an update of the average accuracy and loss
-        if epoch % 10 == 0:
-            print(f"At epoch {epoch}")
-            print(f"Average Error: \n Accuracy: {(avg_acc):>0.1f}%, Avg loss: {avg_loss:>8f} \n")
-
-
-    print_success("\nTraining completed!")
-
-    print_header("Testing Prediction")
-    test_loss, accuracy = planner.test(test_dload)
-    print(f"overall avg loss is {test_loss} at {100*accuracy}% accuracy")
+    nn_train(config, planner, loaders)
     
 def main():
 
@@ -237,7 +165,8 @@ def main():
         loaded_dataset = prepare_dataloader(x_data, y_data, config)
         print("Loaded Dataset: ",loaded_dataset)
 
-        physics_predictions = physics_pred(config, planner, loaded_dataset)
+        phys = PushPhysics.from_config(config.model['physics'])
+        physics_predictions = phys.physics_pred(config, planner, loaded_dataset)
 
     elif args.model == "nn+physics":
         # Perform same process as nn above, but use physics model as input to the nn

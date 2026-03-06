@@ -97,3 +97,23 @@ class PushPhysics:
         y_global = xy_global[:, 1, 0]  # shape = (n)
 
         return torch.stack([x_global, y_global, theta], dim=1)
+
+    def physics_pred(self, loaded_dataset):
+        """Physics-based predictions for entire dataset"""
+        pred_list = []
+        mse_list = []
+        for batch, (X, y) in enumerate(loaded_dataset):
+            # print(f"batch: {batch}")
+            predictions = self.compute_motion(X)
+            # print(f"predictions: {predictions}")
+            mse = torch.mean((predictions - y) ** 2)
+            # print(f"MSE for one batch: {mse}")
+
+            pred_list.extend(predictions)
+            mse_list.extend([mse.item()])
+
+        # print(len(pred_list))
+        avg_mse = sum(mse_list) / len(mse_list)
+        print(f"avg_mse: {avg_mse}")
+
+        return pred_list

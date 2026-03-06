@@ -76,6 +76,7 @@ class NNPhysicsModel(NNModel):
     # TODO: Implement forward function
 
 
+
 class PushPlanner:
     """High-level push planning and training"""
 
@@ -87,6 +88,7 @@ class PushPlanner:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # TODO: Initialize models
+        self.physics = PushPhysics.from_config(self.model_config['physics'])
         self.model = PushNetFactory.create(self.model_config)
 
         # TODO: Move models to device
@@ -162,6 +164,19 @@ class PushPlanner:
             # if batch % 7 == 0: # 21 batches, get 3 readings.
             #     loss, current = loss.item(), batch * batch_size + len(X) # .item() converts loss from tensor to float
             #     print(f"train loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+
+    def phys_first(self, loaded_dataset):
+        physics_predictions = self.physics.physics_pred(loaded_dataset)
+        phys_pred_float = np.zeros((len(physics_predictions), len(physics_predictions[0])) )
+
+        # Iterate through prediction tensors and convert into floats
+        # Probably not the most efficient method, but I don't notice the time
+        for row in range(len(physics_predictions)): # for each row
+            for col in range(len(physics_predictions[0])): # and each column in said row
+                tensor = physics_predictions[row][col]
+
+                phys_pred_float[row][col] = tensor.item()
+        return phys_pred_float
 
 
 class PushNetFactory:
