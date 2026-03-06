@@ -3,6 +3,7 @@ import torch.nn as nn
 from typing import Dict, Any, List
 import numpy as np
 from tqdm import tqdm
+from helpers.config import load_config
 
 from .physics import PushPhysics
 
@@ -22,6 +23,7 @@ class NNModel(nn.Module):
         self.layers = nn.Sequential(*layers)
 
         self.flatten = nn.Flatten()
+
 
         # Define an MLP with at least one hidden layer. 
         # Train the network using the given dataset.
@@ -121,31 +123,47 @@ class PushPlanner:
                 correct += (pred.argmax(1) == y.argmax(1)).type(torch.float).sum().item()
         test_loss /= len(dataloader)
         correct /= len(dataloader.dataset)
-        print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+        # print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+        
+        # No need to save model states at this point in time. Validation is just for QOL.
+
         return test_loss, correct
 
     # TODO: Implement plan_push function
     def plan_push(self):
         pass
 
-    # TODO: Implement train_epoch function
-    def train_epoch(self, dataloader):
-        size = len(dataloader.dataset)
-        self.model.train()
-        for batch, (X, y) in enumerate(dataloader):
+    # def predict(self, X):
+    #     self.model.eval()
+    #     with torch.no_grad():
+    #         X, y = X.to(self.device)
+    #         y_pred = self.model(X)
+    #     return y_pred
+
+    def train_epoch(self, loaded_data, batch_size):
+
+        size = len(loaded_data.dataset)
+        self.model.train()        
+
+
+        for batch, (X, y) in enumerate(loaded_data):
+            # print("Batch: ",batch)
             X, y = X.to(self.device), y.to(self.device)
 
             # Compute prediction error
-            pred = self.model(X)
+            pred = self.model(X) 
             loss = self.loss(pred, y)
 
             # Backpropagation
             loss.backward()
             self.optimize_push()
 
-            if batch % 100 == 0:
-                loss, current = loss.item(), (batch + 1) * len(X)
-                print(f"train loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            # print(f"Module output of batch: {batch} with 100 = {batch % 100}")
+
+            # If desire to get a better idea of these values over time, uncomment
+            # if batch % 7 == 0:
+            #     loss, current = loss.item(), batch * batch_size + len(X)
+            #     print(f"train loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
 class PushNetFactory:

@@ -13,6 +13,7 @@ from tqdm import tqdm
 from colorama import init, Fore, Style
 import os
 import numpy as np
+import sys
 
 
 # Initialize colorama
@@ -44,6 +45,7 @@ def parse_args():
         default=None,
         help="Path to checkpoint file to resume training",
     )
+    parser.add_argument("--model", type=str, default="nn", help="Choose model to run: {nn, physics, nn+physics}")
     return parser.parse_args()
 
 def split_data(X, y, train_percent, valid_percent):
@@ -66,13 +68,51 @@ def split_data(X, y, train_percent, valid_percent):
 
     return x_train, x_valid, x_test, y_train, y_valid, y_test
 
+def nn_train(config, planner, loaders):
+
+    [train_dload, valid_dload, test_dload] = loaders
+
+    print_header("Starting Neural Network Training")
     
+    #pbar is progress bar: number of epochs
+    pbar = tqdm(range(config.training["num_epochs"]), desc="Training Progress")
+
+    accuracy_list = []
+    loss_list = []
+    avg_acc = 0.0
+    avg_loss = 1.0
+
+    for epoch in pbar:
+
+        planner.train_epoch(train_dload, config.data["batch_size"])
+        
+        # Test model with validation set to have option to check learning
+        # Doesn't make any specific changes as is due to no checkpoint saving
+        test_loss, correct = planner.test(valid_dload)
+
+        accuracy_list.extend([100*correct])
+        loss_list.extend([test_loss])
+
+        avg_acc = sum(accuracy_list) / len(accuracy_list)
+        avg_loss = sum(loss_list) / len(loss_list)
+        
+        # Every 10 epochs, give an update of the average accuracy and loss
+        if epoch % 10 == 0:
+            print(f"At epoch {epoch}")
+            print(f"Average Error: \n Accuracy: {(avg_acc):>0.1f}%, Avg loss: {avg_loss:>8f} \n")
+
+
+    print_success("\nTraining completed!")
+
+    print_header("Testing Prediction")
+    test_loss, accuracy = planner.test(test_dload)
+    print(f"overall avg loss is {test_loss} at {100*accuracy}% accuracy")
+
 
 def main():
 
     # Parse command line arguments
     args = parse_args()
-
 
     # Load configuration
     config = load_config(args.config)
@@ -81,67 +121,38 @@ def main():
 
     # Load data
     print_header("Loading Data")
-    x_data, y_data = load_data(config)
-    # print_info(f"Loaded data shapes: x={x_data.shape}, y={y_data.shape}")
-    # print(f"row 1 of x: {x_data[1, :]}")
-    x_rows, x_cols = x_data.shape
-    y_rows, y_cols = y_data.shape
-    # dataloader = prepare_dataloader(x_data, y_data, config)
 
-    # Cut into training and validation sets.
-    x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(x_data, y_data, 0.7, 0.1)
-
-
-    loaded_train_dataset = prepare_dataloader(x_train, y_train, config)
-    loaded_valid_dataset = prepare_dataloader(x_validate, y_validate, config)
-    loaded_test_dataset  = prepare_dataloader(x_test, y_test, config)
-
-
-    # print("Loaded Train Dataset: ",loaded_train_dataset)
-
-    # ToDO: Call Physics Push Planner
     planner = PushPlanner(config.model, config.physics_sampling)
 
-    print_header("Starting Training")
-    #pbar is progress bar: number of epochs
-    pbar = tqdm(range(config.training["num_epochs"]), desc="Training Progress")
+    if args.model == "nn":
+        
+        x_data, y_data = load_data(config)
 
-    # ToDO: Implement training loop
-    accuracy_list = []
-    loss_list = []
-    for epoch in pbar:
-        # print(f"Epoch {epoch+1}\n------------")
+        # Cut into training and validation sets.
+        x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(x_data, y_data, 0.7, 0.1)
 
-        # TODO: use planner.train_epoch() instead???
-        for batch, (X, y) in enumerate(loaded_train_dataset):
-            X, y = X.to(device), y.to(device)
-            pred = planner.model(X)
-            # print("pred: ",pred)
-            loss = planner.loss(predictions=pred, targets=y)
-            # print("loss: ",loss)
+        train_dataloader = prepare_dataloader(x_train, y_train, config)
+        valid_dataloader = prepare_dataloader(x_validate, y_validate, config)
+        test_dataloader  = prepare_dataloader(x_test, y_test, config)
 
-            #Deposit gradients of the loss w.r.t. each parameter
-            #through backpropogation
-            loss.backward()
+        loaders = [train_dataloader, valid_dataloader, test_dataloader]
 
-            planner.optimize_push()
+        nn_train(config, planner, loaders)
 
-        # Test model with validation set to ensure learning
-        test_loss, correct = planner.test(loaded_valid_dataset)
+    elif args.model == "physics":
+        pass
 
-        accuracy_list.extend([100*correct,int(epoch+1)])
-        loss_list.extend([test_loss,int(epoch+1)])
 
-        # Test prediction
-        # print_header("Testing Prediction")
-    
+    elif args.model == "nn+physics":
+        # Perform same process as nn above, but use physics model as input to the nn
+        pass
 
-    print_success("\nTraining completed!")
-    # ToDo: Test the Model
-    test_loss, accuracy = planner.test(loaded_test_dataset)
-    print(f"overall avg loss is {test_loss} at {100*accuracy}% accuracy")
+
+    else:
+        sys.exit(f"(System Exit) Invalid model entered: {args.model}")
 
     # ToDO: Make Some predictions with model
+
 
 
 if __name__ == "__main__":
