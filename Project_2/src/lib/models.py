@@ -86,7 +86,7 @@ class PushPlanner:
     """High-level push planning and training"""
 
     def __init__(
-        self, model_config: Dict[str, Any], physics_sampling_config: Dict[str, Any]
+        self, model_config: Dict[str, Any], physics_sampling_config: Dict[str, Any], override_model=None 
     ):
         self.model_config = model_config
         self.physics_sampling_config = physics_sampling_config
@@ -94,14 +94,15 @@ class PushPlanner:
 
         # TODO: Initialize models
         self.physics = PushPhysics.from_config(self.model_config['physics'])
-        self.model = PushNetFactory.create(self.model_config)
+        self.model = PushNetFactory.create(self.model_config, override_model)
 
-        # TODO: Move models to device
-        self.model = self.model.to(self.device)
+        if type(self.model) != PushPhysics:
+            # TODO: Move models to device
+            self.model = self.model.to(self.device)
 
-        # TODO: Setup optimizers
-        learning_rate = self.model_config["optimizer"]["learning_rate"]
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
+            # TODO: Setup optimizers
+            learning_rate = self.model_config["optimizer"]["learning_rate"]
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
 
     def loss(self, predictions, targets):
         # split into [x,y] and [theta]
@@ -185,25 +186,45 @@ class PushNetFactory:
     """Factory for creating different types of push networks"""
 
     @staticmethod
-    def create(config: Dict[str, Any]) -> nn.Module:
+    def create(config: Dict[str, Any], override_model=None) -> nn.Module:
         network_config = config["network"]
         physics_config = config["physics"]
         model_type = network_config["type"]
         hidden_dims = network_config["hidden_dims"]
-
-        if model_type == "NNModel":
-            return NNModel(
-                network_config["input_dim"], network_config["task_dim"], hidden_dims
-            )
-        elif model_type == "PhysicsModel":
-            return PushPhysics.from_config(physics_config)
-        else:
-            physics = PushPhysics.from_config(physics_config)
-            return NNPhysicsModel(
-                network_config["input_dim"],
-                network_config["task_dim"],
-                hidden_dims,
-                physics,
-            )
+    
+        match override_model:
+            # If model not defined in command line arguments, use YAML-based config
+            case None:
+                if model_type == "NNModel":
+                    return NNModel(
+                        network_config["input_dim"], network_config["task_dim"], hidden_dims
+                    )
+                elif model_type == "PhysicsModel":
+                    return PushPhysics.from_config(physics_config)
+                else:
+                    physics = PushPhysics.from_config(physics_config)
+                    return NNPhysicsModel(
+                        network_config["input_dim"],
+                        network_config["task_dim"],
+                        hidden_dims,
+                        physics,
+                    )
+                
+            case "nn":
+                return NNModel(
+                    network_config["input_dim"], network_config["task_dim"], hidden_dims
+                )
+            
+            case "physics":
+                return PushPhysics.from_config(physics_config)
+            
+            case "nn+physics":
+                physics = PushPhysics.from_config(physics_config)
+                return NNPhysicsModel(
+                    network_config["input_dim"],
+                    network_config["task_dim"],
+                    hidden_dims,
+                    physics,
+                )
 
     # TODO: Expand factory as needed

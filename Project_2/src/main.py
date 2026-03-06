@@ -116,8 +116,6 @@ def nn_phys_train(config, planner, x_data, y_data):
     combined_x = np.hstack([x_data, phys_pred_float.cpu().numpy()])
     print(f"input shape {combined_x.shape}")
 
-    # print(f"physics pred: \n {phys_pred_float}")
-
     # Cut into training and validation sets.
     x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(combined_x, y_data, 0.7, 0.1)
 
@@ -142,12 +140,10 @@ def main():
     # Load data
     print_header("Loading Data")
 
-    planner = PushPlanner(config.model, config.physics_sampling)
+    planner = PushPlanner(config.model, config.physics_sampling, override_model=args.model)
+    x_data, y_data = load_data(config)
 
     if args.model == "nn":
-        
-        x_data, y_data = load_data(config)
-
         # Cut into training and validation sets.
         x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(x_data, y_data, 0.7, 0.1)
 
@@ -160,25 +156,21 @@ def main():
         nn_train(config, planner, loaders)
 
     elif args.model == "physics":
-        x_data, y_data = load_data(config)
+        x = torch.FloatTensor(x_data)
+        y = torch.FloatTensor(y_data).to(device)
 
-        loaded_dataset = prepare_dataloader(x_data, y_data, config)
-        print("Loaded Dataset: ",loaded_dataset)
-
-        phys = PushPhysics.from_config(config.model['physics'])
-        physics_predictions = phys.physics_pred(config, planner, loaded_dataset)
+        physics_predictions = planner.model.compute_motion(x)
+        mse = torch.mean((physics_predictions - y)**2)
+        print(f"physics mse: {mse}")
 
     elif args.model == "nn+physics":
         # Perform same process as nn above, but use physics model as input to the nn
-        x_data, y_data = load_data(config)
-
         nn_phys_train(config, planner, x_data, y_data)
 
 
     else:
         sys.exit(f"(System Exit) Invalid model entered: {args.model}")
 
-    # ToDO: Make Some predictions with model
 
 
 
