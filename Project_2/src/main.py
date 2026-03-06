@@ -109,6 +109,29 @@ def nn_train(config, planner, loaders):
     test_loss, accuracy = planner.test(test_dload)
     print(f"overall avg loss is {test_loss} at {100*accuracy}% accuracy")
 
+def physics_pred(config, planner, loaded_dataset):
+
+    # ToDO: Call Physics Push Planner
+    physics = PushPhysics.from_config(config.model['physics'])
+    # model = PushPlanner() #TODO: add inputs to initialization
+
+    # Test prediction
+    print_header("Testing Prediction")
+    
+    # x, y = loaded_dataset.dataset[0:32]
+    pred_list = []
+    for batch, (X, y) in enumerate(loaded_dataset):
+        # print(f"batch: {batch}")
+        predictions = physics.compute_motion(X)
+        # print(f"predictions: {predictions}")
+        mse = torch.mean((predictions - y) ** 2)
+        # print(f"MSE for one batch: {mse}")
+
+        pred_list.extend(predictions)
+
+    # print(len(pred_list))
+
+    return pred_list
 
 def main():
 
@@ -146,19 +169,7 @@ def main():
         loaded_dataset = prepare_dataloader(x_data, y_data, config)
         print("Loaded Dataset: ",loaded_dataset)
 
-        # ToDO: Call Physics Push Planner
-        physics = PushPhysics.from_config(config.model['physics'])
-        # model = PushPlanner() #TODO: add inputs to initialization
-
-        # Test prediction
-        print_header("Testing Prediction")
-        
-        x, y = loaded_dataset.dataset[0:32]
-        predictions = physics.compute_motion(x)
-        print(f"predictions: {predictions}")
-        mse = torch.mean((predictions - y) ** 2)
-        print(f"MSE for one batch: {mse}")
-
+        phyics_predictions = physics_pred(config, planner, loaded_dataset)
 
     elif args.model == "nn+physics":
         # Perform same process as nn above, but use physics model as input to the nn
