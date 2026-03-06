@@ -96,7 +96,7 @@ def nn_train(config, planner, loaders):
 
         avg_acc = sum(accuracy_list) / len(accuracy_list)
         avg_loss = sum(loss_list) / len(loss_list)
-        
+
         # Every 10 epochs, give an update of the average accuracy and loss
         if epoch % 10 == 0:
             print(f"At epoch {epoch}")
@@ -120,6 +120,7 @@ def physics_pred(config, planner, loaded_dataset):
     
     # x, y = loaded_dataset.dataset[0:32]
     pred_list = []
+    mse_list = []
     for batch, (X, y) in enumerate(loaded_dataset):
         # print(f"batch: {batch}")
         predictions = physics.compute_motion(X)
@@ -128,11 +129,78 @@ def physics_pred(config, planner, loaded_dataset):
         # print(f"MSE for one batch: {mse}")
 
         pred_list.extend(predictions)
+        mse_list.extend([mse.item()])
 
     # print(len(pred_list))
+    avg_mse = sum(mse_list) / len(mse_list)
+    print(f"avg_mse: {avg_mse}")
 
     return pred_list
 
+def nn_phys_train(config, planner, x_data, y_data):
+    loaded_dataset = prepare_dataloader(x_data, y_data, config)
+    # print("Loaded Dataset: ",loaded_dataset)
+
+    physics_predictions = physics_pred(config, planner, loaded_dataset)
+    phys_pred_float = np.zeros((len(physics_predictions), len(physics_predictions[0])) )
+
+    # Iterate through prediction tensors and convert into floats
+    # Probably not the most efficient method, but I don't notice the time
+    for row in range(len(physics_predictions)): # for each row
+        for col in range(len(physics_predictions[0])): # and each column in said row
+            tensor = physics_predictions[row][col]
+
+            phys_pred_float[row][col] = tensor.item()
+
+    # print(f"physics pred: \n {phys_pred_float}")
+
+    # Cut into training and validation sets.
+    x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(phys_pred_float, y_data, 0.7, 0.1)
+
+    train_dataloader = prepare_dataloader(x_train, y_train, config)
+    valid_dataloader = prepare_dataloader(x_validate, y_validate, config)
+    test_dataloader  = prepare_dataloader(x_test, y_test, config)
+
+    loaders = [train_dataloader, valid_dataloader, test_dataloader]
+
+    [train_dload, valid_dload, test_dload] = loaders
+
+    print_header("Starting Neural Network Training")
+    
+    #pbar is progress bar: number of epochs
+    pbar = tqdm(range(config.training["num_epochs"]), desc="Training Progress")
+
+    accuracy_list = []
+    loss_list = []
+    avg_acc = 0.0
+    avg_loss = 1.0
+
+    for epoch in pbar:
+
+        planner.train_epoch(train_dload, config.data["batch_size"])
+        
+        # Test model with validation set to have option to check learning
+        # Doesn't make any specific changes as is due to no checkpoint saving
+        test_loss, correct = planner.test(valid_dload)
+
+        accuracy_list.extend([100*correct])
+        loss_list.extend([test_loss])
+
+        avg_acc = sum(accuracy_list) / len(accuracy_list)
+        avg_loss = sum(loss_list) / len(loss_list)
+
+        # Every 10 epochs, give an update of the average accuracy and loss
+        if epoch % 10 == 0:
+            print(f"At epoch {epoch}")
+            print(f"Average Error: \n Accuracy: {(avg_acc):>0.1f}%, Avg loss: {avg_loss:>8f} \n")
+
+
+    print_success("\nTraining completed!")
+
+    print_header("Testing Prediction")
+    test_loss, accuracy = planner.test(test_dload)
+    print(f"overall avg loss is {test_loss} at {100*accuracy}% accuracy")
+    
 def main():
 
     # Parse command line arguments
@@ -173,36 +241,9 @@ def main():
 
     elif args.model == "nn+physics":
         # Perform same process as nn above, but use physics model as input to the nn
-        
         x_data, y_data = load_data(config)
-        print(f"x_data: \n {x_data}")
 
-        loaded_dataset = prepare_dataloader(x_data, y_data, config)
-        print("Loaded Dataset: ",loaded_dataset)
-
-        physics_predictions = physics_pred(config, planner, loaded_dataset)
-        phys_pred_float = np.zeros((len(physics_predictions), len(physics_predictions[0])) )
-
-        # Iterate through prediction tensors and convert into floats
-        # Probably not the most efficient method, but I don't notice the time
-        for row in range(len(physics_predictions)): # for each row
-            for col in range(len(physics_predictions[0])): # and each column in said row
-                tensor = physics_predictions[row][col]
-
-                phys_pred_float[row][col] = tensor.item()
-
-        print(f"physics pred: \n {phys_pred_float}")
-
-        # Cut into training and validation sets.
-        x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(phys_pred_float, y_data, 0.7, 0.1)
-
-        train_dataloader = prepare_dataloader(x_train, y_train, config)
-        valid_dataloader = prepare_dataloader(x_validate, y_validate, config)
-        test_dataloader  = prepare_dataloader(x_test, y_test, config)
-
-        loaders = [train_dataloader, valid_dataloader, test_dataloader]
-
-        nn_train(config, planner, loaders)
+        nn_phys_train(config, planner, x_data, y_data)
 
 
     else:
