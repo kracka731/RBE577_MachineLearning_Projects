@@ -39,7 +39,7 @@ def print_error(text: str):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train push planning model")
-    parser.add_argument("--config", type=str, default=f"{os.path.dirname(os.path.abspath(__file__))}/config/custom.yaml", help="Path to config file")
+    parser.add_argument("--config", type=str, default="default.yaml", help="Name of config file")
     parser.add_argument(
         "--checkpoint",
         type=str,
@@ -133,7 +133,8 @@ def main():
     args = parse_args()
 
     # Load configuration
-    config = load_config(args.config)
+    print(f"{os.path.dirname(os.path.abspath(__file__))}/config/{args.config}")
+    config = load_config(f"{os.path.dirname(os.path.abspath(__file__))}/config/{args.config}")
     device = config.get_device()
     print_info(f"Using device: {device}")
 
