@@ -109,23 +109,6 @@ def nn_train(config, planner, loaders):
     test_loss, accuracy = planner.test(test_dload)
     print(f"overall avg loss is {test_loss} at {100*accuracy}% accuracy")
 
-
-def nn_phys_train(config, planner, x_data, y_data):
-    combined_x = x_data
-    phys_pred_float = planner.physics.compute_motion(torch.from_numpy(x_data))
-    combined_x = np.hstack([x_data, phys_pred_float.cpu().numpy()])
-    print(f"input shape {combined_x.shape}")
-
-    # Cut into training and validation sets.
-    x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(combined_x, y_data, 0.7, 0.1)
-
-    train_dataloader = prepare_dataloader(x_train, y_train, config)
-    valid_dataloader = prepare_dataloader(x_validate, y_validate, config)
-    test_dataloader  = prepare_dataloader(x_test, y_test, config)
-
-    loaders = [train_dataloader, valid_dataloader, test_dataloader]
-
-    nn_train(config, planner, loaders)
     
 def main():
 
@@ -143,15 +126,22 @@ def main():
     planner = PushPlanner(config.model, config.physics_sampling, override_model=args.model)
     x_data, y_data = load_data(config)
 
-    if args.model == "nn":
-        # Cut into training and validation sets.
-        x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(x_data, y_data, 0.7, 0.1)
+    combined_x = x_data
+    # Add physics to input data for NNPhysicsModel
+    if args.model == "nn+physics":
+        phys_pred_float = planner.physics.compute_motion(torch.from_numpy(x_data))
+        combined_x = np.hstack([x_data, phys_pred_float.cpu().numpy()])
+        print(f"input shape {combined_x.shape}")
 
-        train_dataloader = prepare_dataloader(x_train, y_train, config)
-        valid_dataloader = prepare_dataloader(x_validate, y_validate, config)
-        test_dataloader  = prepare_dataloader(x_test, y_test, config)
+    # Cut into training and validation sets.
+    x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(combined_x, y_data, 0.7, 0.1)
 
-        loaders = [train_dataloader, valid_dataloader, test_dataloader]
+    train_dataloader = prepare_dataloader(x_train, y_train, config)
+    valid_dataloader = prepare_dataloader(x_validate, y_validate, config)
+    test_dataloader  = prepare_dataloader(x_test, y_test, config)
+    loaders = [train_dataloader, valid_dataloader, test_dataloader]
+
+    if args.model == "nn" or args.model == "nn+physics":
 
         nn_train(config, planner, loaders)
 
@@ -162,11 +152,6 @@ def main():
         physics_predictions = planner.model.compute_motion(x)
         mse = torch.mean((physics_predictions - y)**2)
         print(f"physics mse: {mse}")
-
-    elif args.model == "nn+physics":
-        # Perform same process as nn above, but use physics model as input to the nn
-        nn_phys_train(config, planner, x_data, y_data)
-
 
     else:
         sys.exit(f"(System Exit) Invalid model entered: {args.model}")
