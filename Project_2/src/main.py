@@ -123,13 +123,6 @@ def main():
     # Load data
     print_header("Loading Data")
 
-    # ToDO: Call Dataloader
-    loaded_dataset = prepare_dataloader(x_data, y_data, config)
-    print("Loaded Dataset: ",loaded_dataset)
-
-    # ToDO: Call Physics Push Planner
-    physics = PushPhysics.from_config(config.model['physics'])
-    # model = PushPlanner() #TODO: add inputs to initialization
     planner = PushPlanner(config.model, config.physics_sampling)
 
     if args.model == "nn":
@@ -148,20 +141,28 @@ def main():
         nn_train(config, planner, loaders)
 
     elif args.model == "physics":
-        pass
+        x_data, y_data = load_data(config)
+
+        loaded_dataset = prepare_dataloader(x_data, y_data, config)
+        print("Loaded Dataset: ",loaded_dataset)
+
+        # ToDO: Call Physics Push Planner
+        physics = PushPhysics.from_config(config.model['physics'])
+        # model = PushPlanner() #TODO: add inputs to initialization
+
+        # Test prediction
+        print_header("Testing Prediction")
+        
+        x, y = loaded_dataset.dataset[0:32]
+        predictions = physics.compute_motion(x)
+        print(f"predictions: {predictions}")
+        mse = torch.mean((predictions - y) ** 2)
+        print(f"MSE for one batch: {mse}")
 
 
     elif args.model == "nn+physics":
         # Perform same process as nn above, but use physics model as input to the nn
         pass
-
-    # Test prediction
-    print_header("Testing Prediction")
-    
-    x, y = loaded_dataset.dataset[0:32]
-    predictions = physics.compute_motion(x)
-    mse = torch.mean((predictions - y) ** 2)
-    print(f"MSE for one batch: {mse}")
 
     else:
         sys.exit(f"(System Exit) Invalid model entered: {args.model}")

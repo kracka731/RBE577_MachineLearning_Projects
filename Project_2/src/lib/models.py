@@ -158,10 +158,8 @@ class PushPlanner:
             loss.backward()
             self.optimize_push()
 
-            # print(f"Module output of batch: {batch} with 100 = {batch % 100}")
-
             # If desire to get a better idea of these values over time, uncomment
-            # if batch % 7 == 0:
+            # if batch % 7 == 0: # 21 batches, get 3 readings.
             #     loss, current = loss.item(), batch * batch_size + len(X)
             #     print(f"train loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
