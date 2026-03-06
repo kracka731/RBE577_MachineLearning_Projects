@@ -49,6 +49,14 @@ class NNModel(nn.Module):
 
         correct /= len(pred)
         return 100*correct
+    
+
+    def predict(self, X):
+        self.model.eval()
+        with torch.no_grad():
+            X, y = X.to(self.device)
+            y_pred = self.model(X)
+        return y_pred
 
 
 class NNPhysicsModel(NNModel):
@@ -66,27 +74,35 @@ class NNPhysicsModel(NNModel):
         self.requires_grad = True
 
     # TODO: Implement forward function
+    def forward(self, x):
+        # phys_pred = self.physics.compute_motion(x)
+        # x = torch.cat([x, phys_pred], dim=1)
+        base_pred = super().forward(x)
+        # print(f"type of p {type(phys_pred)} and base {type(base_pred)}")
+        return base_pred #+ phys_pred
 
 
 class PushPlanner:
     """High-level push planning and training"""
 
     def __init__(
-        self, model_config: Dict[str, Any], physics_sampling_config: Dict[str, Any]
+        self, model_config: Dict[str, Any], physics_sampling_config: Dict[str, Any], override_model=None 
     ):
         self.model_config = model_config
         self.physics_sampling_config = physics_sampling_config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # TODO: Initialize models
-        self.model = PushNetFactory.create(self.model_config)
+        self.physics = PushPhysics.from_config(self.model_config['physics'])
+        self.model = PushNetFactory.create(self.model_config, override_model)
 
-        # TODO: Move models to device
-        self.model = self.model.to(self.device)
+        if type(self.model) != PushPhysics:
+            # TODO: Move models to device
+            self.model = self.model.to(self.device)
 
-        # TODO: Setup optimizers
-        learning_rate = self.model_config["optimizer"]["learning_rate"]
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
+            # TODO: Setup optimizers
+            learning_rate = self.model_config["optimizer"]["learning_rate"]
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
 
     def loss(self, predictions, targets):
         # split into [x,y] and [theta]
@@ -124,7 +140,6 @@ class PushPlanner:
         test_loss /= len(dataloader)
         correct /= len(dataloader.dataset)
         # print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
-        
         # No need to save model states at this point in time. Validation is just for QOL.
 
         return test_loss, correct
@@ -133,18 +148,8 @@ class PushPlanner:
     def plan_push(self):
         pass
 
-    # def predict(self, X):
-    #     self.model.eval()
-    #     with torch.no_grad():
-    #         X, y = X.to(self.device)
-    #         y_pred = self.model(X)
-    #     return y_pred
-
     def train_epoch(self, loaded_data, batch_size):
-
-        size = len(loaded_data.dataset)
         self.model.train()        
-
 
         for batch, (X, y) in enumerate(loaded_data):
             # print("Batch: ",batch)
@@ -158,37 +163,68 @@ class PushPlanner:
             loss.backward()
             self.optimize_push()
 
-            # print(f"Module output of batch: {batch} with 100 = {batch % 100}")
-
             # If desire to get a better idea of these values over time, uncomment
-            # if batch % 7 == 0:
-            #     loss, current = loss.item(), batch * batch_size + len(X)
+            # if batch % 7 == 0: # 21 batches, get 3 readings.
+            #     loss, current = loss.item(), batch * batch_size + len(X) # .item() converts loss from tensor to float
             #     print(f"train loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+
+    def phys_first(self, loaded_dataset):
+        physics_predictions = self.physics.physics_pred(loaded_dataset)
+        phys_pred_float = torch.zeros((len(physics_predictions), len(physics_predictions[0])) )
+
+        # Iterate through prediction tensors and convert into floats
+        # Probably not the most efficient method, but I don't notice the time
+        for row in range(len(physics_predictions)): # for each row
+            for col in range(len(physics_predictions[0])): # and each column in said row
+                tensor = physics_predictions[row][col]
+
+                phys_pred_float[row][col] = tensor.item()
+        return phys_pred_float
 
 
 class PushNetFactory:
     """Factory for creating different types of push networks"""
 
     @staticmethod
-    def create(config: Dict[str, Any]) -> nn.Module:
+    def create(config: Dict[str, Any], override_model=None) -> nn.Module:
         network_config = config["network"]
         physics_config = config["physics"]
         model_type = network_config["type"]
         hidden_dims = network_config["hidden_dims"]
-
-        if model_type == "NNModel":
-            return NNModel(
-                network_config["input_dim"], network_config["task_dim"], hidden_dims
-            )
-        elif model_type == "PhysicsModel":
-            return PushPhysics.from_config(physics_config)
-        else:
-            physics = PushPhysics.from_config(physics_config)
-            return NNPhysicsModel(
-                network_config["input_dim"],
-                network_config["task_dim"],
-                hidden_dims,
-                physics,
-            )
+    
+        match override_model:
+            # If model not defined in command line arguments, use YAML-based config
+            case None:
+                if model_type == "NNModel":
+                    return NNModel(
+                        network_config["input_dim"], network_config["task_dim"], hidden_dims
+                    )
+                elif model_type == "PhysicsModel":
+                    return PushPhysics.from_config(physics_config)
+                else:
+                    physics = PushPhysics.from_config(physics_config)
+                    return NNPhysicsModel(
+                        network_config["input_dim"],
+                        network_config["task_dim"],
+                        hidden_dims,
+                        physics,
+                    )
+                
+            case "nn":
+                return NNModel(
+                    network_config["input_dim"], network_config["task_dim"], hidden_dims
+                )
+            
+            case "physics":
+                return PushPhysics.from_config(physics_config)
+            
+            case "nn+physics":
+                physics = PushPhysics.from_config(physics_config)
+                return NNPhysicsModel(
+                    network_config["input_dim"],
+                    network_config["task_dim"],
+                    hidden_dims,
+                    physics,
+                )
 
     # TODO: Expand factory as needed

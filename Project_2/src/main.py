@@ -1,6 +1,6 @@
 import argparse
 import torch
-from lib.models import PushPlanner, NNModel
+from lib.models import PushPlanner, NNModel, NNPhysicsModel
 from helpers.utils import (
     load_data,
     prepare_dataloader,
@@ -12,6 +12,7 @@ from helpers.config import load_config
 from tqdm import tqdm
 from colorama import init, Fore, Style
 import os
+from lib.physics import PushPhysics
 import numpy as np
 import sys
 
@@ -95,7 +96,7 @@ def nn_train(config, planner, loaders):
 
         avg_acc = sum(accuracy_list) / len(accuracy_list)
         avg_loss = sum(loss_list) / len(loss_list)
-        
+
         # Every 10 epochs, give an update of the average accuracy and loss
         if epoch % 10 == 0:
             print(f"At epoch {epoch}")
@@ -109,6 +110,23 @@ def nn_train(config, planner, loaders):
     print(f"overall avg loss is {test_loss} at {100*accuracy}% accuracy")
 
 
+def nn_phys_train(config, planner, x_data, y_data):
+    combined_x = x_data
+    phys_pred_float = planner.physics.compute_motion(torch.from_numpy(x_data))
+    combined_x = np.hstack([x_data, phys_pred_float.cpu().numpy()])
+    print(f"input shape {combined_x.shape}")
+
+    # Cut into training and validation sets.
+    x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(combined_x, y_data, 0.7, 0.1)
+
+    train_dataloader = prepare_dataloader(x_train, y_train, config)
+    valid_dataloader = prepare_dataloader(x_validate, y_validate, config)
+    test_dataloader  = prepare_dataloader(x_test, y_test, config)
+
+    loaders = [train_dataloader, valid_dataloader, test_dataloader]
+
+    nn_train(config, planner, loaders)
+    
 def main():
 
     # Parse command line arguments
@@ -122,12 +140,10 @@ def main():
     # Load data
     print_header("Loading Data")
 
-    planner = PushPlanner(config.model, config.physics_sampling)
+    planner = PushPlanner(config.model, config.physics_sampling, override_model=args.model)
+    x_data, y_data = load_data(config)
 
     if args.model == "nn":
-        
-        x_data, y_data = load_data(config)
-
         # Cut into training and validation sets.
         x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(x_data, y_data, 0.7, 0.1)
 
@@ -140,18 +156,21 @@ def main():
         nn_train(config, planner, loaders)
 
     elif args.model == "physics":
-        pass
+        x = torch.FloatTensor(x_data)
+        y = torch.FloatTensor(y_data).to(device)
 
+        physics_predictions = planner.model.compute_motion(x)
+        mse = torch.mean((physics_predictions - y)**2)
+        print(f"physics mse: {mse}")
 
     elif args.model == "nn+physics":
         # Perform same process as nn above, but use physics model as input to the nn
-        pass
+        nn_phys_train(config, planner, x_data, y_data)
 
 
     else:
         sys.exit(f"(System Exit) Invalid model entered: {args.model}")
 
-    # ToDO: Make Some predictions with model
 
 
 
