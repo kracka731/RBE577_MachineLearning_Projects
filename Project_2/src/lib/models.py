@@ -3,6 +3,7 @@ import torch.nn as nn
 from typing import Dict, Any, List
 import numpy as np
 from tqdm import tqdm
+from helpers.config import load_config
 
 from .physics import PushPhysics
 
@@ -21,6 +22,9 @@ class NNModel(nn.Module):
         layers.append(nn.Linear(prev_dim, output_dim))
         self.layers = nn.Sequential(*layers)
 
+        self.flatten = nn.Flatten()
+
+
         # Define an MLP with at least one hidden layer. 
         # Train the network using the given dataset.
         # Compute and visualize loss curves.
@@ -33,36 +37,18 @@ class NNModel(nn.Module):
         # output data: x,y,theta (3)
 
     def forward(self, x):
-
-        x = self.flatten
-
-    def loss(self, predictions, targets):
-        # split into [x,y] and [theta]
-        pos_pred, rot_pred = predictions[:,:1], predictions[:,2]
-        pos_true, rot_true = targets[:,:1], targets[:,2]
-
-        # Calculate MSE for position and rotation separately
-        pos_loss = torch.mean((pos_pred - pos_true) ** 2)
-        rot_loss = torch.mean((rot_pred - rot_true) ** 2)
-
-        # Combine losses with weights (just 1 for now)
-        total_loss = 1*pos_loss + 1*rot_loss
-        return total_loss 
+        x = self.flatten(x)
+        logits = self.layers(x)
+        return logits
 
     def accuracy(self, validate_loader, pred):
         test_loss, correct = 0, 0
         for X, y in validate_loader:
-            test_loss += self.loss(predictions=pred, targets=y).item()
+            # test_loss += self.loss(predictions=pred, targets=y).item()
             correct += (pred.argmax(1) == y.argmax(1)).type(torch.float).sum().item()
 
-        # test_loss /= 
-        # Figure out
-
-
-
-    # TODO: Implement forward function
-    # TODO: Implement loss function
-    # TODO: Implement accuracy function
+        correct /= len(pred)
+        return 100*correct
 
 
 class NNPhysicsModel(NNModel):
@@ -93,32 +79,91 @@ class PushPlanner:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # TODO: Initialize models
-        physics_config = model_config["physics"]
-        physics = PushPhysics.from_config(physics_config)
+        self.model = PushNetFactory.create(self.model_config)
 
-        net_config = self.model_config["network"]
-        self.push_model = NNPhysicsModel(net_config["input_dim"], net_config["task_dim"], net_config["hidden_dims"], physics)
-        
         # TODO: Move models to device
-        self.push_model = self.push_model.to(self.device)
+        self.model = self.model.to(self.device)
 
         # TODO: Setup optimizers
         learning_rate = self.model_config["optimizer"]["learning_rate"]
-        self.loss = nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.push_model.parameters(), lr=learning_rate)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
 
+    def loss(self, predictions, targets):
+        # split into [x,y] and [theta]
+        pos_pred, rot_pred = predictions[:,:1], predictions[:,2]
+        pos_true, rot_true = targets[:,:1], targets[:,2]
+
+        # Calculate MSE for position and rotation separately
+        pos_loss = torch.mean((pos_pred - pos_true) ** 2)
+        rot_loss = torch.mean((rot_pred - rot_true) ** 2)
+
+        # Combine losses with weights (just 1 for now)
+        total_loss = 1*pos_loss + 1*rot_loss
+        return total_loss 
 
     # TODO: Implement optimize_push function
     def optimize_push(self):
-        pass
+        self.optimizer.step()
+        self.optimizer.zero_grad()
+
+    def test(self, dataloader):
+        self.model.eval()
+        test_loss, correct = 0, 0
+
+        # Make predictions with the model
+        with torch.no_grad():
+            # Move tensors to appropriate device
+            # Do forward and calculate error
+            for X, y in dataloader:
+                X, y = X.to(self.device), y.to(self.device)
+                pred = self.model(X)
+
+                test_loss += self.loss(predictions=pred, targets=y).item()
+
+                correct += (pred.argmax(1) == y.argmax(1)).type(torch.float).sum().item()
+        test_loss /= len(dataloader)
+        correct /= len(dataloader.dataset)
+        # print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+        
+        # No need to save model states at this point in time. Validation is just for QOL.
+
+        return test_loss, correct
 
     # TODO: Implement plan_push function
     def plan_push(self):
         pass
 
-    # TODO: Implement train_epoch function
-    def train_epoch(self):
-        pass
+    # def predict(self, X):
+    #     self.model.eval()
+    #     with torch.no_grad():
+    #         X, y = X.to(self.device)
+    #         y_pred = self.model(X)
+    #     return y_pred
+
+    def train_epoch(self, loaded_data, batch_size):
+
+        size = len(loaded_data.dataset)
+        self.model.train()        
+
+
+        for batch, (X, y) in enumerate(loaded_data):
+            # print("Batch: ",batch)
+            X, y = X.to(self.device), y.to(self.device)
+
+            # Compute prediction error
+            pred = self.model(X) 
+            loss = self.loss(pred, y)
+
+            # Backpropagation
+            loss.backward()
+            self.optimize_push()
+
+            # print(f"Module output of batch: {batch} with 100 = {batch % 100}")
+
+            # If desire to get a better idea of these values over time, uncomment
+            # if batch % 7 == 0:
+            #     loss, current = loss.item(), batch * batch_size + len(X)
+            #     print(f"train loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
 class PushNetFactory:

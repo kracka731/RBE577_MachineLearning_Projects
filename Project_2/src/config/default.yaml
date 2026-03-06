@@ -9,7 +9,7 @@ data:
 # Model configuration
 model:
   network:
-    type: "NNPhysicsModel"  # Options: NNModel, PhysicsModel, NNPhysicsModel
+    type: "NNModel"  # Options: NNModel, PhysicsModel, NNPhysicsModel
     input_dim: 3
     task_dim: 3
     null_dim: 0
