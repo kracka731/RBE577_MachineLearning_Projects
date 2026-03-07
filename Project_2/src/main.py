@@ -39,7 +39,7 @@ def print_error(text: str):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train push planning model")
-    parser.add_argument("--config", type=str, default=f"{os.path.dirname(os.path.abspath(__file__))}/config/custom.yaml", help="Path to config file")
+    parser.add_argument("--config", type=str, default="default.yaml", help="Name of config file")
     parser.add_argument(
         "--checkpoint",
         type=str,
@@ -109,6 +109,23 @@ def nn_train(config, planner, loaders):
     test_loss, accuracy = planner.test(test_dload)
     print(f"overall avg loss is {test_loss} at {100*accuracy}% accuracy")
 
+
+def nn_phys_train(config, planner, x_data, y_data):
+    combined_x = x_data
+    phys_pred_float = planner.physics.compute_motion(torch.from_numpy(x_data))
+    combined_x = np.hstack([x_data, phys_pred_float.cpu().numpy()])
+    print(f"input shape {combined_x.shape}")
+
+    # Cut into training and validation sets.
+    x_train, x_validate, x_test, y_train, y_validate, y_test = split_data(combined_x, y_data, 0.7, 0.1)
+
+    train_dataloader = prepare_dataloader(x_train, y_train, config)
+    valid_dataloader = prepare_dataloader(x_validate, y_validate, config)
+    test_dataloader  = prepare_dataloader(x_test, y_test, config)
+
+    loaders = [train_dataloader, valid_dataloader, test_dataloader]
+
+    nn_train(config, planner, loaders)
     
 def main():
 
@@ -116,7 +133,8 @@ def main():
     args = parse_args()
 
     # Load configuration
-    config = load_config(args.config)
+    print(f"{os.path.dirname(os.path.abspath(__file__))}/config/{args.config}")
+    config = load_config(f"{os.path.dirname(os.path.abspath(__file__))}/config/{args.config}")
     device = config.get_device()
     print_info(f"Using device: {device}")
 
