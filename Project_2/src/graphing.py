@@ -116,9 +116,9 @@ def plot_y(phys, nn, nn_phys):
     axs[0, 2].legend()
 
 
-    phys_error = phys[1]-phys[0]
-    nn_error = nn[1]-nn[0]
-    nn_phys_error = nn_phys[1]-nn_phys[0]
+    phys_error = abs(phys[1]-phys[0])
+    nn_error = abs(nn[1]-nn[0])
+    nn_phys_error = abs(nn_phys[1]-nn_phys[0])
     axs[1, 0].plot(x, phys_error[1:i+1,0], label='Physics Error')
     axs[1, 0].plot(x, nn_error[1:i+1,0], label='NNModel Error')
     axs[1, 0].plot(x, nn_phys_error[1:i+1,0], label='NNPhysicsModel Error')
