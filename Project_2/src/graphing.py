@@ -46,7 +46,7 @@ def track_train(config, planner, loaders):
         
         # Test model with validation set to have option to check learning
         # Doesn't make any specific changes as is due to no checkpoint saving
-        test_loss, correct = planner.test(valid_dload)
+        test_loss, correct, _,_ = planner.test(valid_dload)
 
         accuracy_list.extend([100*correct])
         loss_list.extend([test_loss])
@@ -55,18 +55,98 @@ def track_train(config, planner, loaders):
         avg_loss = sum(loss_list) / len(loss_list)
 
         # Every 10 epochs, give an update of the average accuracy and loss
-        if epoch % 10 == 0:
-            print(f"At epoch {epoch}")
-            print(f"Average Error: \n Accuracy: {(avg_acc):>0.1f}%, Avg loss: {avg_loss:>8f} \n")
+        # if epoch % 10 == 0:
+            # print(f"At epoch {epoch}")
+            # print(f"Average Error: \n Accuracy: {(avg_acc):>0.1f}%, Avg loss: {avg_loss:>8f} \n")
 
-    test_loss, accuracy = planner.test(test_dload)
+    test_loss, accuracy, _, _ = planner.test(test_dload)
     return loss_list, accuracy_list, test_loss, accuracy
 
 def test(planner, loaders):
     [train_dload, valid_dload, test_dload] = loaders
-    test_loss, accuracy = planner.test(test_dload)
+    test_loss, accuracy, y_actual, y_pred = planner.test(test_dload)
+    print(f"Test loss is {test_loss} with accuracy {100*accuracy}%")
+    return y_actual, y_pred
 
-def plot(num_epochs, phys_loss, nn_loss, nn_accuracy, nnphys_loss, nnphys_accuracy):
+def test_physics(physics:PushPhysics, loaders, device):
+    [train_dload, valid_dload, test_dload] = loaders
+    y_actual, y_pred = physics.physics_pred(test_dload, device)
+    return y_actual, y_pred
+
+def plot_y(phys, nn, nn_phys):
+    i = 20
+    fig, axs = plt.subplots(2,3)
+
+    # Extract Data 
+    phys = (phys[0].cpu().numpy(), phys[1].cpu().numpy())
+    nn = (nn[0].cpu().numpy(), nn[1].cpu().numpy())
+    nn_phys  = (nn_phys[0].cpu().numpy(), nn_phys[1].cpu().numpy())
+    x = [x for x in range(i)]
+    axs[0, 0].plot(x, phys[0][1:i+1,0], label='Physics Actual')
+    axs[0, 0].plot(x, phys[1][1:i+1,0], label='Physics Predicted')
+    axs[0, 0].plot(x, nn[0][1:i+1,0], label='NNModel Actual')
+    axs[0, 0].plot(x, nn[1][1:i+1,0], label='NNModel Predicted')
+    axs[0, 0].plot(x, nn_phys[0][1:i+1,0], label='NNPhysicsModel Actual')
+    axs[0, 0].plot(x, nn_phys[1][1:i+1,0], label='NNPhysicsModel Predicted')
+    axs[0, 0].set_title('Predicted vs. Actual X Value')
+    axs[0, 0].set_ylabel('X')
+    axs[0, 0].set_xlabel('Data Samples')
+    axs[0, 0].legend()
+
+    axs[0, 1].plot(x, phys[0][1:i+1,1], label='Physics Actual')
+    axs[0, 1].plot(x, phys[1][1:i+1,1], label='Physics Predicted')
+    axs[0, 1].plot(x, nn[0][1:i+1,1], label='NNModel Actual')
+    axs[0, 1].plot(x, nn[1][1:i+1,1], label='NNModel Predicted')
+    axs[0, 1].plot(x, nn_phys[0][1:i+1,1], label='NNPhysicsModel Actual')
+    axs[0, 1].plot(x, nn_phys[1][1:i+1,1], label='NNPhysicsModel Predicted')
+    axs[0, 1].set_title('Predicted vs. Actual Y Value')
+    axs[0, 1].set_ylabel('Y')
+    axs[0, 1].set_xlabel('Data Samples')
+    axs[0, 1].legend()
+
+    axs[0, 2].plot(x, phys[0][1:i+1,2], label='Physics Actual')
+    axs[0, 2].plot(x, phys[1][1:i+1,2], label='Physics Predicted')
+    axs[0, 2].plot(x, nn[0][1:i+1,2], label='NNModel Actual')
+    axs[0, 2].plot(x, nn[1][1:i+1,2], label='NNModel Predicted')
+    axs[0, 2].plot(x, nn_phys[0][1:i+1,2], label='NNPhysicsModel Actual')
+    axs[0, 2].plot(x, nn_phys[1][1:i+1,2], label='NNPhysicsModel Predicted')
+    axs[0, 2].set_title('Predicted vs. Actual Theta Value')
+    axs[0, 2].set_xlabel('Data Samples')
+    axs[0, 2].set_ylabel('Theta')
+    axs[0, 2].legend()
+
+
+    phys_error = phys[1]-phys[0]
+    nn_error = nn[1]-nn[0]
+    nn_phys_error = nn_phys[1]-nn_phys[0]
+    axs[1, 0].plot(x, phys_error[1:i+1,0], label='Physics Error')
+    axs[1, 0].plot(x, nn_error[1:i+1,0], label='NNModel Error')
+    axs[1, 0].plot(x, nn_phys_error[1:i+1,0], label='NNPhysicsModel Error')
+    axs[1, 0].set_title('Predicted vs. Actual X Error')
+    axs[1, 0].set_ylabel('X Error')
+    axs[1, 0].set_xlabel('Data Samples')
+    axs[1, 0].legend()
+
+    axs[1, 1].plot(x, phys_error[1:i+1,1], label='Physics Error')
+    axs[1, 1].plot(x, nn_error[1:i+1,1], label='NNModel Error')
+    axs[1, 1].plot(x, nn_phys_error[1:i+1,1], label='NNPhysicsModel Error')
+    axs[1, 1].set_title('Predicted vs. Actual Y Error')
+    axs[1, 1].set_ylabel('Y Error')
+    axs[1, 1].set_xlabel('Data Samples')
+    axs[1, 1].legend()
+
+    axs[1, 2].plot(x, phys_error[1:i+1,2], label='Physics Error')
+    axs[1, 2].plot(x, nn_error[1:i+1,2], label='NNModel Error')
+    axs[1, 2].plot(x, nn_phys_error[1:i+1,2], label='NNPhysicsModel Error')
+    axs[1, 2].set_title('Predicted vs. Actual Theta Error')
+    axs[1, 2].set_xlabel('Data Samples')
+    axs[1, 2].set_ylabel('Theta Error')
+    axs[1, 2].legend()
+
+    
+    return axs
+
+def plot_loss(num_epochs, phys_loss, nn_loss, nn_accuracy, nnphys_loss, nnphys_accuracy):
     fig, axs = plt.subplots(1, 2)
     pos = [x for x in range(num_epochs)]
     phys_loss = [phys_loss for i in range(num_epochs)]
@@ -83,7 +163,7 @@ def plot(num_epochs, phys_loss, nn_loss, nn_accuracy, nnphys_loss, nnphys_accura
     axs[1].set_ylabel('% Accuracy')
     axs[1].legend()
     
-    return fig, axs
+    return axs
 
 def main():
     """Initialize all 3 models, train, graph loss, compare"""
@@ -119,10 +199,14 @@ def main():
     print(f"Test loss for Physics: {phys_loss.cpu()} loss and accuracy for NN: {nn_t_loss} {100*nn_t_accuracy}, and NNPhysics {nnph_t_loss} {100*nnph_t_accuracy}")
 
     # Graph predictions vs ground truth 
+    physics_actual_pred = test_physics(physics, nn_loaders, device)
+    nn_actual_pred = test(nn, nn_loaders)
+    nnphys_actual_pred = test(nn_phys, nnphys_loaders)
+    axs = plot_y(physics_actual_pred, nn_actual_pred, nnphys_actual_pred)
 
     # Graph loss at each epoch
     num_epochs = config.training["num_epochs"]
-    fig, axs = plot(num_epochs, phys_loss.cpu(), nn_loss, nn_accuracy, nnphys_loss, nnphys_accuracy)
+    loss_graphs = plot_loss(num_epochs, phys_loss.cpu(), nn_loss, nn_accuracy, nnphys_loss, nnphys_accuracy)
     plt.show()
 
 

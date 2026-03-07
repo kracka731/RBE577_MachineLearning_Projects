@@ -91,7 +91,7 @@ def nn_train(config, planner, loaders):
         
         # Test model with validation set to have option to check learning
         # Doesn't make any specific changes as is due to no checkpoint saving
-        test_loss, correct = planner.test(valid_dload)
+        test_loss, correct,_,_ = planner.test(valid_dload)
 
         accuracy_list.extend([100*correct])
         loss_list.extend([test_loss])
@@ -108,7 +108,7 @@ def nn_train(config, planner, loaders):
     print_success("\nTraining completed!")
 
     print_header("Testing Prediction")
-    test_loss, accuracy = planner.test(test_dload)
+    test_loss, accuracy, _,_ = planner.test(test_dload)
     print(f"overall avg loss is {test_loss} at {100*accuracy}% accuracy")
 
 

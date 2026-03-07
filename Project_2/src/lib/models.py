@@ -125,6 +125,8 @@ class PushPlanner:
     def test(self, dataloader):
         self.model.eval()
         test_loss, correct = 0, 0
+        y_actual = torch.zeros((1,3)).to(self.device)
+        y_pred = torch.zeros((1,3)).to(self.device)
 
         # Make predictions with the model
         with torch.no_grad():
@@ -134,6 +136,9 @@ class PushPlanner:
                 X, y = X.to(self.device), y.to(self.device)
                 pred = self.model(X)
 
+                y_actual = torch.cat([y_actual, y], dim=0)
+                y_pred = torch.cat([y_pred, pred], dim=0)
+
                 test_loss += self.loss(predictions=pred, targets=y).item()
 
                 correct += (pred.argmax(1) == y.argmax(1)).type(torch.float).sum().item()
@@ -142,7 +147,7 @@ class PushPlanner:
         # print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
         # No need to save model states at this point in time. Validation is just for QOL.
 
-        return test_loss, correct
+        return test_loss, correct, y_actual, y_pred
 
     # TODO: Implement plan_push function
     def plan_push(self):
