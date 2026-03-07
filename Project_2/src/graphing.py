@@ -78,7 +78,7 @@ def plot(num_epochs, phys_loss, nn_loss, nn_accuracy, nnphys_loss, nnphys_accura
     axs[0].legend()
 
     axs[1].plot(pos,  nn_accuracy, label='NNModel')
-    axs[1].plot(pos,  nnphys_accuracy, label='NNModel')
+    axs[1].plot(pos,  nnphys_accuracy, label='NNPhysicsModel')
     axs[1].set_title('Accuracy over course of Training')
     axs[1].set_ylabel('% Accuracy')
     axs[1].legend()
