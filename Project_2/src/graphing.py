@@ -72,7 +72,7 @@ def plot(num_epochs, phys_loss, nn_loss, nn_accuracy, nnphys_loss, nnphys_accura
     phys_loss = [phys_loss for i in range(num_epochs)]
     axs[0].plot(pos,  phys_loss, label='Physics')
     axs[0].plot(pos,  nn_loss, label='NNModel')
-    axs[0].plot(pos,  nnphys_loss, label='NNPhysicsModel')
+    axs[0].plot(pos,  nnphys_loss, label='NNPhysihave we ended csModel')
     axs[0].set_title('Loss over course of Training')
     axs[0].set_ylabel('Loss')
     axs[0].legend()
@@ -91,7 +91,7 @@ def main():
     args = parse_args()
 
     # Load configuration
-    config = load_config(args.config)
+    config = load_config(f"{os.path.dirname(os.path.abspath(__file__))}/config/{args.config}")
     device = config.get_device()
 
     # Intialize pure physics
