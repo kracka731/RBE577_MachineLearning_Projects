@@ -30,7 +30,6 @@ def prepare_dataloader(
         dataset, batch_size=config.data["batch_size"], shuffle=config.data["shuffle"]
     )
 
-
 def evaluate_planner(
     planner, dataloader: torch.utils.data.DataLoader, device: torch.device
 ) -> Tuple[float, float]:

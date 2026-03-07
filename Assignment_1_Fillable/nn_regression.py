@@ -146,7 +146,6 @@ class MLP(nn.Module):
 
             print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
-
         #### Your CODE ENDS HERE ####
     
         return self, accuracy_list, loss_list

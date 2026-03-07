@@ -72,7 +72,7 @@ def plot(num_epochs, phys_loss, nn_loss, nn_accuracy, nnphys_loss, nnphys_accura
     phys_loss = [phys_loss for i in range(num_epochs)]
     axs[0].plot(pos,  phys_loss, label='Physics')
     axs[0].plot(pos,  nn_loss, label='NNModel')
-    axs[0].plot(pos,  nnphys_loss, label='NNPhysihave we ended csModel')
+    axs[0].plot(pos,  nnphys_loss, label='NNPhysicsModel')
     axs[0].set_title('Loss over course of Training')
     axs[0].set_ylabel('Loss')
     axs[0].legend()
@@ -116,7 +116,7 @@ def main():
 
     phys_loss = torch.mean((phys_pred - torch.from_numpy(y_data).to(device))**2)
 
-    print(f"Test loss for Physis: {phys_loss.cpu()} loss and accuracy for NN: {nn_t_loss} {100*nn_t_accuracy}, and NNPhysics {nnph_t_loss} {100*nnph_t_accuracy}")
+    print(f"Test loss for Physics: {phys_loss.cpu()} loss and accuracy for NN: {nn_t_loss} {100*nn_t_accuracy}, and NNPhysics {nnph_t_loss} {100*nnph_t_accuracy}")
 
     # Graph predictions vs ground truth 
 

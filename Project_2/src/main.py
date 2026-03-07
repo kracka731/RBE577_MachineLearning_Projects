@@ -49,6 +49,7 @@ def parse_args():
     parser.add_argument("--model", type=str, default="nn", help="Choose model to run: {nn, physics, nn+physics}")
     return parser.parse_args()
 
+
 def split_data(X, y, train_percent, valid_percent):
     # train_percent: amount of dataset to be training
     # valid_percent: amount of dataset to be validation
@@ -68,6 +69,7 @@ def split_data(X, y, train_percent, valid_percent):
     y_test = y[num_valid+num_train+1:num_valid+num_train+num_test, :]
 
     return x_train, x_valid, x_test, y_train, y_valid, y_test
+
 
 def nn_train(config, planner, loaders):
 
@@ -127,6 +129,7 @@ def nn_phys_train(config, planner, x_data, y_data):
 
     nn_train(config, planner, loaders)
     
+    
 def main():
 
     # Parse command line arguments
@@ -173,8 +176,6 @@ def main():
 
     else:
         sys.exit(f"(System Exit) Invalid model entered: {args.model}")
-
-
 
 
 if __name__ == "__main__":
