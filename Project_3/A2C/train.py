@@ -96,6 +96,8 @@ def train_actor_critic(config_path=None, plot=True):
 
     actor_optim = optim.Adam(actor.parameters(), lr=config["actor_lr"])
     critic_optim = (optim.Adam(critic.parameters(), lr=config["critic_lr"]) if use_a2c else None)
+    actor_optim.zero_grad()
+    critic_optim.zero_grad()
 
     reward_history = np.zeros(config["num_episodes"])
 
@@ -110,12 +112,29 @@ def train_actor_critic(config_path=None, plot=True):
         episode_terminated = False
         episode_truncated = False
 
+        # Begin iterating through time 
         #This is to prevent pathological cases where the episode never ends, we limit the number of steps per episode to max_ep_steps, but in practice for lunar lander it should end well before that
         for _ in range(config["max_ep_steps"]):
+            if episode_terminated or episode_truncated:
+                break
             # TODO: Interact with the environment for one step and record the transition
             # Hint: This block should choose an action from the actor, step the environment,
             # update the observation statistics, and save the information needed later
             # to build returns and losses.
+
+            # Take action and update env
+            action = actor.get_action(state)
+            next_state, reward, episode_terminated, episode_truncated, info = step_env(env, action)
+            obs_normalizer.update(next_state)
+            next_state = torch.tensor(normalize_observation(next_state, obs_normalizer), dtype=torch.float32)
+            
+            # Store data
+            episode_rewards.append(reward)
+            episode_reward += reward
+            episode_states.append(next_state)
+            episode_actions.append(action)
+
+            state = next_state
             pass  # Replace with your implementation
 
 
@@ -124,29 +143,45 @@ def train_actor_critic(config_path=None, plot=True):
         action_batch = None  # Replace with your implementation
 
         # Hint: Use the stored rewards together with gamma 
-        return_batch = None  # Replace with your implementation
+        return_batch = compute_discounted_returns(episode_rewards, gamma=config["gamma"])  # Replace with your implementation
 
         # TODO: Evaluate the log-probabilities of the actions that were actually taken
         # Hint: The actor helper for this expects the batched states and chosen actions.
-        chosen_log_probs, _ = None  # Replace with your implementation
+        chosen_log_probs, _ = actor.evaluate_actions(state_batch, action_batch)  # Replace with your implementation
 
         # TODO: Clear any stale actor gradients before backpropagation
         # Hint: Optimizers in PyTorch accumulate gradients unless you reset them.
-        pass  # Replace with your implementation
+        with torch.no_grad():  # Replace with your implementation
 
 
-        if use_reinforce: #this is the REINFORCE case where we don't use a critic, so the advantage is just the return
-            print("Using REINFORCE")
-            # TODO: Implement the policy-gradient update for REINFORCE
-            pass  # Replace with your implementation
+            if use_reinforce: #this is the REINFORCE case where we don't use a critic, so the advantage is just the return
+                print("Using REINFORCE")
+                # TODO: Implement the policy-gradient update for REINFORCE
+                actor_loss = compute_actor_loss(chosen_log_probs, return_batch)
 
-        elif use_a2c:#This is the critic case where we compute the advantage using the critic's value estimates, and use that to compute the actor loss, and also compute the critic loss and backprop through both
-            print("Using A2C")
-            # TODO: Implement the actor-critic update
-            # Hint: This branch should involve the critic's value estimates, an advantage term,
-            # and a combined loss that updates both networks.
-            pass  # Replace with your implementation
+                # Backpropagation & optimization
+                actor_loss.backward()
+                actor_optim.step()
+                # Replace with your implementation
 
+            elif use_a2c:#This is the critic case where we compute the advantage using the critic's value estimates, and use that to compute the actor loss, and also compute the critic loss and backprop through both
+                print("Using A2C")
+                # TODO: Implement the actor-critic update
+                # Hint: This branch should involve the critic's value estimates, an advantage term,
+                # and a combined loss that updates both networks.
+                value_batch = None
+
+                actor_loss = compute_actor_loss(chosen_log_probs, return_batch)
+                critic_loss = compute_critic_loss(return_batch, value_batch)
+                
+                # Perform backprop
+                actor_loss.backward()
+                critic_loss.backward()
+                actor_optim.step()
+                critic_optim.step()
+                # Replace with your implementation
+            
+            
 
      #TODO: Implement the optimizer step to update the parameters of the actor and critic (if using A2C)
 
