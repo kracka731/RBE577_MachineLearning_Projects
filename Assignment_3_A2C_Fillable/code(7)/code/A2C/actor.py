@@ -16,13 +16,11 @@ class Actor(nn.Module):
         """Return chosen-action log probs and policy entropy."""
         #TODO Fill your code
         logits = None  # Replace with your implementation
-
         # TODO: Convert the raw outputs into log-probabilities
         # Hint: The loss is written in terms of log probabilities rather than plain probabilities.
         log_action_probs = None  # Replace with your implementation
         # Hint: You will need these when measuring how uncertain the policy is.
         action_probs = None  # Replace with your implementation
-        
         # TODO: Mark which action was selected at each step
         # Hint: The provided `action` tensor contains indices, but you need a representation
         # that can isolate one action per row from the full action distribution.
