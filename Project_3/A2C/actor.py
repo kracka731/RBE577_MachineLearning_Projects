@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
+import numpy as np
 import random
-
 
 class Actor(nn.Module):
     """Policy network for discrete LunarLander actions."""
@@ -23,6 +23,8 @@ class Actor(nn.Module):
 
         self.flatten = nn.Flatten()
 
+        # Optimizer and other related setup handled in train.py
+
     def R(self, s, a):
         reward = 0
         # Shaping based on proximity to landing pad & stability 
@@ -42,28 +44,52 @@ class Actor(nn.Module):
 
         return reward
 
-    def evaluate_actions(self, state, action):
+    def evaluate_actions(self, states, actions):
         """Return chosen-action log probs and policy entropy."""
         # calculate the probabilities of the actor executing each action and then choose one
-        
+        # Called with a set of known taken actions and known lived states
+        # Calculate specifically 
+
+        # State space
+        # x, y: horizontal and vertical position
+        # x_hat, y_hat: horizontal and vertical velocities
+        # theta: angle of the lander
+        # theta_hat: angular velocity
+        # c_L, c_R: contact indicators for left and right legs {0,1}
+        # s = (x, y, x_hat, y_hat, theta, theta_hat, c_L, c_R)
+
+        # Action space
+        # 0: do nothing | 1: fire left orientation engine 
+        # 2: fire main engine | 3: fire right orientation engine
+
         #TODO Fill your code
         # Forward pass
-        logits = self.layers(state)  # Replace with your implementation
+        logits = self.layers(states)  # Replace with your implementation
+        # A logit is a bijective function that maps probabilities ([0,1])
+        # to R((-ing, ing))
 
         # TODO: Convert the raw outputs into log-probabilities
         # Hint: The loss is written in terms of log probabilities rather than plain probabilities.
+        # The log probablities of all possible actions
         log_action_probs = torch.log(logits)  # Replace with your implementation
+
         # Hint: You will need these when measuring how uncertain the policy is.
-        action_probs = None  # Replace with your implementation
+        # This portion uses what the model has learned to predict the likely best next action
+        # Specifically considering the current state 
+        action_probs = self(states)  # Replace with your implementation
+        action_indices = np.array(actions, dtype=np.int32)
 
         # TODO: Mark which action was selected at each step
         # Hint: The provided `action` tensor contains indices, but you need a representation
         # that can isolate one action per row from the full action distribution.
-        action_oh = None  # Replace with your implementation
+        action_oh = torch.one_hot(action_indices) # Replace with your implementation
+
 
         # TODO: Extract the log-probability of each chosen action
         # Hint: Use the selected-action mask together with the full table of log probabilities.
-        chosen_log_probs = None  # Replace with your implementation
+        # log pi_theta(a|s)
+        chosen_log_probs = torch.math.log(torch.reduce_sum(action_probs * action_oh))  # Replace with your implementation
+
 
         # TODO: Compute the entropy of the action distribution
         # Hint: Entropy should be larger when the policy is spread out and smaller when it is confident.
@@ -72,18 +98,21 @@ class Actor(nn.Module):
         return chosen_log_probs, entropy
     
     def get_action(self, state, deterministic=False):
-        # TODO: Run the policy on a single state - Foreward pass
+        # TODO: Run the policy on a single state - Forward pass
         logits = self.layers(state)  # Replace with your implementation
+
 
         # TODO: Return a greedy action when deterministic evaluation is requested
         if deterministic:
             # Choose the best action
+            action = self(state)
             pass  # Replace with your implementation
         else: # stochastic, randomly choose an action 
-            sample = random.random()
+            action = random.randrange(0, 4, 1) # choose a random action [0,1,2,3]
 
-        action_dist = None  # Replace with your implementation
+        # categorical function can give categorical distribution from softmax 
+        action_dist = None # Replace with your implementation
 
         # TODO: Sample and return one action
-        return None  # Replace with your implementation
+        return action  # Replace with your implementation
 
