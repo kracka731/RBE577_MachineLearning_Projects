@@ -2,37 +2,38 @@ import torch
 
 
 def compute_discounted_returns(rewards, gamma, bootstrap_value=None):
-    # TODO: Compute the discounted return at every timestep
+    """Compute the discounted return at every timestep """
     # Hint: Work backward from the end of the episode or rollout.
     # Gamma: discount factor from (0-1]
 
-    discounted_returns = [] # G in the math, this is the list of all returns?
+    discounted_returns = torch.empty((0,)) # this is the list of all returns
     # Called return instead of reward due to the causality assumption
 
-    # TODO: Initialize the running return
-    running_return = None  # Replace with your implementation
-    
+    # Initialize the running return Gt = the summation of returns for a timestep t
+    running_return = 0  
 
-    # TODO: Accumulate discounted returns in reverse order
+    # Accumulate discounted returns in reverse order
     # Hint: Each earlier timestep should include its own reward plus a discounted
     # contribution from what comes after it.
-    # So this means, start from the goal?
-    
+    # So this means, start from the end (episode termination)   
+    t = len(rewards) - 1
     for reward in reversed(rewards):
-        pass  # Replace with your implementation
+        running_return += gamma**(t) * reward
+        discounted_returns = torch.cat((discounted_returns, running_return))
+        t -= 1
 
-
-    # TODO: Package the per-step returns into a single tensor
+    # Package the per-step returns into a single tensor
     # Hint: The training code expects one tensor containing all timesteps.
-    # Look at last project?
+    discounted_returns = torch.flip(discounted_returns, 0)
 
-    return None  # Replace with your implementation
+    return discounted_returns  
 
 def compute_advantage(return_batch, value_batch):
-    # TODO: Compute the advantage estimate
+    """A2C: compute difference in observed return vs critic's prediction"""
+    # Compute the advantage estimate
     # Hint: This quantity should capture how much better or worse the observed return
     # was compared with the critic's prediction.
-    return None  # Replace with your implementation
+    return normalize_advantage(return_batch - value_batch)  
 
 def normalize_advantage(advantage_batch):
     if advantage_batch.numel() <= 1:
@@ -43,12 +44,19 @@ def normalize_advantage(advantage_batch):
 
 
 def compute_actor_loss(chosen_log_probs, advantage_batch):
-    # TODO: Compute the policy loss
+    """Compute policy loss through REINFORCE: derivative of the objective 
+    function = grad(J(theta))"""
+    # First term sum(grad(log(policy)) 
+    # Indicates direction to increase probability of actions taken by the policy
+    # aka: how to adjust parameters (theta) to make observed sequence of actions
 
-    # J(theta)
+    # Second term Gt or At is advantage_batch 
+    # Determines how strongly to reinforce the direction taken by policy gradient
 
-    return None  # Replace with your implementation
+    return torch.sum(chosen_log_probs * advantage_batch)
 
 def compute_critic_loss(return_batch, value_batch):
-    # TODO: Compute the value-function loss
-    return None  # Replace with your implementation
+    """Compute the MSE of the advantage"""
+    # Compute the value-function loss
+    advantage = compute_advantage(return_batch, value_batch)
+    return torch.mean(advantage**2) 
