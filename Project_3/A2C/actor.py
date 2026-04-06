@@ -132,5 +132,5 @@ class Actor(nn.Module):
         # log_prob = dist.log_prob(action)
 
         # TODO: Sample and return one action
-        return action  # Replace with your implementation
+        return int(action)  # Replace with your implementation
 
