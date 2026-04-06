@@ -31,7 +31,7 @@ class Actor(nn.Module):
         logits = self.layers(flat_state)
         return logits
 
-    def evaluate_actions(self, state, action):
+    def evaluate_actions(self, states, actions):
         """Return chosen-action log probs and policy entropy."""
         # calculate the probabilities of the actor executing each action and then choose one
         #TODO Figure out if this should be for just one state and 4 actions, or for all known states and actions
@@ -39,9 +39,8 @@ class Actor(nn.Module):
         # This is all to figure out the advantage of a certian action in a certian state
         # This is specifically the difference of the action value of a state-action pair with the state value of that state
 
-        # state: current state
-        # action: chosen action???? Then what's the point of the actor?
-        # I guess this is not what chooses. Just thinks about the decision. Is that not what the critic does??
+        # state: tensor array of lived states
+        # action: tensor array of chosen actions
 
         # State space
         # x, y: horizontal and vertical position
@@ -60,7 +59,10 @@ class Actor(nn.Module):
 
         #TODO Fill your code
         # Forward pass
-        action_logits = self.layers(state) 
+        with torch.no_grad(): # In order to not include the gradient function to save time and computation
+            action_logits = self.layers(states) 
+        print(f"action_logits: {action_logits}")
+
         # A logit is a bijective function that maps probabilities ([0,1])
         # Can be articulated is pi_theta(a_i, s_i) in math
         # Also refered to as action logits
@@ -80,7 +82,7 @@ class Actor(nn.Module):
         # TODO may need to be altered to properly manage tensors (but is good according to practices online)
         # actions = torch.cat(actions, self.get_action(state[-1], False), 0) # choose an action and append it (non-deterministic) 
         # action_indices = np.array(action, dtype=np.int32)
-        action_indice = torch.zeros([1,4])
+        action_oh = torch.zeros([len(actions),4])
         # [row][column]
         
 
@@ -88,7 +90,10 @@ class Actor(nn.Module):
         # Hint: The provided `action` tensor contains indices, but you need a representation
         # that can isolate one action per row from the full action distribution.
         # action_oh = torch.one_hot() # do torch.one_hot somehow
-        action_oh = action_indice[0][action] = torch.tensor(1) # assuming action is an integer from 0-3
+        n=0
+        for action in actions:
+            action_oh[n][action] = torch.tensor(1) # assuming action is an integer from 0-3
+            n+=1
 
         # action_oh stands for action_one-hot
 

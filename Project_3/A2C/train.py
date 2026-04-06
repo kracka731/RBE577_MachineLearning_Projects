@@ -126,9 +126,9 @@ def train_actor_critic(config_path=None, plot=True):
 
             # Take action and update env
             action = actor.get_action(state)
-            print(f"state: {state}\n")
-            print(f"action: {action}\n")
-            print(f"env: {env}\n")
+            # print(f"state: {state}\n")
+            # print(f"action: {action}\n")
+            # print(f"env: {env}\n")
             next_state, reward, episode_terminated, episode_truncated, info = step_env(env, action)
             obs_normalizer.update(next_state)
             next_state = torch.tensor(normalize_observation(next_state, obs_normalizer), dtype=torch.float32)
@@ -142,11 +142,11 @@ def train_actor_critic(config_path=None, plot=True):
             state = next_state
             pass  # Replace with your implementation
 
-        # TODO: Convert the collected episode data into batched tensors
-        state_batch = [state]  # Replace with your implementation
-        action_batch = [action]  # Replace with your implementation
+        # # TODO: Convert the collected episode data into batched tensors
+        # state_batch = [state]  # Replace with your implementation
+        # action_batch = [action]  # Replace with your implementation
 
-        assert len(state_batch) == len(action_batch), f"Values should be equal. |state_batch_len = {len(state_batch)}| |action_batch_len = {len(action_batch)}|"
+        # assert len(state_batch) == len(action_batch), f"Values should be equal. |state_batch_len = {len(state_batch)}| |action_batch_len = {len(action_batch)}|"
 
         # Hint: Use the stored rewards together with gamma 
         return_batch = compute_discounted_returns(episode_rewards, gamma=config["gamma"])  # Replace with your implementation
@@ -155,11 +155,12 @@ def train_actor_critic(config_path=None, plot=True):
         # Hint: The actor helper for this expects the batched states and chosen actions.
         chosen_log_probs = []
         entropy = []
-        for i in range(0, len(episode_states)):
-            prob, en = actor.evaluate_actions(episode_states[i], episode_actions[i])  # Replace with your implementation
-            print(f"chose prob: | {prob} | with entropy: | {en} |")
-            chosen_log_probs.append(prob[0:3])
-            entropy.append(en) 
+        chosen_log_probs, entropy = actor.evaluate_actions(episode_states, episode_actions)
+        # for i in range(0, len(episode_states)):
+        #     prob, en = actor.evaluate_actions(episode_states[i], episode_actions[i])  # Replace with your implementation
+        #     print(f"chose prob: | {prob} | with entropy: | {en} |")
+        #     chosen_log_probs.append(prob[0:3])
+        #     entropy.append(en) 
         # chosen_log_probs = torch.tensor(chosen_log_probs)
 
         # TODO: Clear any stale actor gradients before backpropagation
