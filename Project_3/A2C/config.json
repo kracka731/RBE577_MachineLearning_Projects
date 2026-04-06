@@ -1,6 +1,6 @@
 {
   "env_id": "LunarLander-v2",
-  "algorithm": "a2c", 
+  "algorithm": "a2c",
   "plot_filename": "reward_history.png",
   "checkpoint_path": "checkpoints/lunar_lander_actor.pt",
   "num_test_episodes": 3,

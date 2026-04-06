@@ -113,6 +113,8 @@ def train_actor_critic(config_path=None, plot=True):
         episode_rewards = []
         episode_terminated = False
         episode_truncated = False
+        state_batch: torch.tensor = state
+        action_batch = torch.tensor([0])
 
         # Begin iterating through time 
         #This is to prevent pathological cases where the episode never ends, we limit the number of steps per episode to max_ep_steps, but in practice for lunar lander it should end well before that
@@ -138,13 +140,13 @@ def train_actor_critic(config_path=None, plot=True):
             episode_reward += reward
             episode_states.append(next_state)
             episode_actions.append(action)
+            state_batch = torch.vstack([state_batch, next_state])
+            action_batch = torch.vstack([action_batch, torch.tensor(action)])
 
             state = next_state
             pass  # Replace with your implementation
 
-        # # TODO: Convert the collected episode data into batched tensors
-        # state_batch = [state]  # Replace with your implementation
-        # action_batch = [action]  # Replace with your implementation
+        # TODO: Convert the collected episode data into batched tensors
 
         # assert len(state_batch) == len(action_batch), f"Values should be equal. |state_batch_len = {len(state_batch)}| |action_batch_len = {len(action_batch)}|"
 
@@ -153,25 +155,21 @@ def train_actor_critic(config_path=None, plot=True):
 
         # TODO: Evaluate the log-probabilities of the actions that were actually taken
         # Hint: The actor helper for this expects the batched states and chosen actions.
-        chosen_log_probs = []
-        entropy = []
-        chosen_log_probs, entropy = actor.evaluate_actions(episode_states, episode_actions)
-        # for i in range(0, len(episode_states)):
-        #     prob, en = actor.evaluate_actions(episode_states[i], episode_actions[i])  # Replace with your implementation
-        #     print(f"chose prob: | {prob} | with entropy: | {en} |")
-        #     chosen_log_probs.append(prob[0:3])
-        #     entropy.append(en) 
-        # chosen_log_probs = torch.tensor(chosen_log_probs)
+        chosen_log_probs, entropy = actor.evaluate_actions(state_batch, action_batch)
 
         # TODO: Clear any stale actor gradients before backpropagation
         # Hint: Optimizers in PyTorch accumulate gradients unless you reset them.
         with torch.no_grad():  # Replace with your implementation
 
+            # Policy gradient update
+            actor_loss = compute_actor_loss(chosen_log_probs, return_batch)
+
+            # optional 
+            actor_loss -=  config['value_loss_coef'] * entropy
 
             if use_reinforce: #this is the REINFORCE case where we don't use a critic, so the advantage is just the return
                 print("Using REINFORCE")
                 # TODO: Implement the policy-gradient update for REINFORCE
-                actor_loss = compute_actor_loss(chosen_log_probs, return_batch)
 
                 # Backpropagation & optimization
                 actor_loss.backward()
@@ -183,9 +181,8 @@ def train_actor_critic(config_path=None, plot=True):
                 # TODO: Implement the actor-critic update
                 # Hint: This branch should involve the critic's value estimates, an advantage term,
                 # and a combined loss that updates both networks.
-                value_batch = None
+                value_batch = critic(state_batch)
 
-                actor_loss = compute_actor_loss(chosen_log_probs, return_batch)
                 critic_loss = compute_critic_loss(return_batch, value_batch)
                 
                 # Perform backprop
