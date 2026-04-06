@@ -92,7 +92,7 @@ class Actor(nn.Module):
         # action_oh = torch.one_hot() # do torch.one_hot somehow
         n=0
         for action in actions:
-            action_oh[n][action] = torch.tensor(1) # assuming action is an integer from 0-3
+            action_oh[n][action] = torch.tensor(1.) # assuming action is an integer from 0-3
             n+=1
 
         # action_oh stands for action_one-hot
