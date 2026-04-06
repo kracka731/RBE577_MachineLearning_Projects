@@ -161,11 +161,15 @@ def train_actor_critic(config_path=None, plot=True):
         # Hint: Optimizers in PyTorch accumulate gradients unless you reset them.
         with torch.no_grad():  # Replace with your implementation
 
+            # Policy gradient update
+            actor_loss = compute_actor_loss(chosen_log_probs, return_batch)
+
+            # optional 
+            actor_loss -=  config['value_loss_coef'] * entropy
 
             if use_reinforce: #this is the REINFORCE case where we don't use a critic, so the advantage is just the return
                 print("Using REINFORCE")
                 # TODO: Implement the policy-gradient update for REINFORCE
-                actor_loss = compute_actor_loss(chosen_log_probs, return_batch)
 
                 # Backpropagation & optimization
                 actor_loss.backward()
@@ -177,9 +181,8 @@ def train_actor_critic(config_path=None, plot=True):
                 # TODO: Implement the actor-critic update
                 # Hint: This branch should involve the critic's value estimates, an advantage term,
                 # and a combined loss that updates both networks.
-                value_batch = None
+                value_batch = critic(state_batch)
 
-                actor_loss = compute_actor_loss(chosen_log_probs, return_batch)
                 critic_loss = compute_critic_loss(return_batch, value_batch)
                 
                 # Perform backprop
