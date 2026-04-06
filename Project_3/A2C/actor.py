@@ -96,6 +96,7 @@ class Actor(nn.Module):
         # Hint: Use the selected-action mask together with the full table of log probabilities.
         # chosen_log_probs = torch.math.log(torch.reduce_sum(action_probs * action_oh))  # Replace with your implementation
         chosen_log_prob = log_action_probs * action_oh
+        print(f"in actor chosen_log_prob: {chosen_log_prob}")
 
         # TODO: Compute the entropy of the action distribution
         # Hint: Entropy should be larger when the policy is spread out and smaller when it is confident.

@@ -97,9 +97,9 @@ def train_actor_critic(config_path=None, plot=True):
     actor.obs_normalizer = obs_normalizer
 
     actor_optim = optim.Adam(actor.parameters(), lr=config["actor_lr"])
-    # critic_optim = (optim.Adam(critic.parameters(), lr=config["critic_lr"]) if use_a2c else None)
+    critic_optim = (optim.Adam(critic.parameters(), lr=config["critic_lr"]) if use_a2c else None)
     actor_optim.zero_grad()
-    # critic_optim.zero_grad()
+    critic_optim.zero_grad()
 
     reward_history = np.zeros(config["num_episodes"])
 
@@ -144,14 +144,17 @@ def train_actor_critic(config_path=None, plot=True):
 
 
         # TODO: Convert the collected episode data into batched tensors
-        state_batch = None  # Replace with your implementation
-        action_batch = None  # Replace with your implementation
+        state_batch = [state]  # Replace with your implementation
+        action_batch = [action]  # Replace with your implementation
+
+        assert len(state_batch) == len(action_batch), f"Values should be equal. |state_batch_len = {len(state_batch)}| |action_batch_len = {len(action_batch)}|"
 
         # Hint: Use the stored rewards together with gamma 
         return_batch = compute_discounted_returns(episode_rewards, gamma=config["gamma"])  # Replace with your implementation
 
         # TODO: Evaluate the log-probabilities of the actions that were actually taken
         # Hint: The actor helper for this expects the batched states and chosen actions.
+
         chosen_log_probs, _ = actor.evaluate_actions(state_batch, action_batch)  # Replace with your implementation
 
         # TODO: Clear any stale actor gradients before backpropagation
@@ -183,7 +186,7 @@ def train_actor_critic(config_path=None, plot=True):
                 actor_loss.backward()
                 critic_loss.backward()
                 actor_optim.step()
-                # critic_optim.step()
+                critic_optim.step()
                 # Replace with your implementation
             
             
