@@ -128,9 +128,6 @@ def train_actor_critic(config_path=None, plot=True):
 
             # Take action and update env
             action = actor.get_action(state)
-            # print(f"state: {state}\n")
-            # print(f"action: {action}\n")
-            # print(f"env: {env}\n")
             next_state, reward, episode_terminated, episode_truncated, info = step_env(env, action)
             obs_normalizer.update(next_state)
             next_state = torch.tensor(normalize_observation(next_state, obs_normalizer), dtype=torch.float32)
@@ -158,6 +155,7 @@ def train_actor_critic(config_path=None, plot=True):
         # TODO: Evaluate the log-probabilities of the actions that were actually taken
         # Hint: The actor helper for this expects the batched states and chosen actions.
         chosen_log_probs, entropy = actor.evaluate_actions(state_batch, action_batch)
+        print(f"Training episode {i_episode}/{config['num_episodes']}. Current Entropy = {entropy}")
 
         # TODO: Clear any stale actor gradients before backpropagation
         # Hint: Optimizers in PyTorch accumulate gradients unless you reset them.
@@ -165,6 +163,7 @@ def train_actor_critic(config_path=None, plot=True):
 
             # Policy gradient update
             actor_loss = compute_actor_loss(chosen_log_probs, return_batch)
+            actor_loss.requires_grad = True
 
             # optional 
             # actor_loss -=  config['value_loss_coef'] * entropy
@@ -186,6 +185,7 @@ def train_actor_critic(config_path=None, plot=True):
                 value_batch = critic(state_batch)
 
                 critic_loss = compute_critic_loss(return_batch, value_batch)
+                critic_loss.requires_grad = True
                 
                 # Perform backprop
                 actor_loss.backward()
