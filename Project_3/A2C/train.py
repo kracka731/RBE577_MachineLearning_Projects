@@ -48,7 +48,7 @@ def run_lunar_lander(actor=None, video_filename="lunar_lander_example.mp4", conf
             normalized_state = normalize_observation(state, obs_normalizer)
             state_tensor = torch.tensor(normalized_state, dtype=torch.float32)
             action = actor.get_action(state_tensor, deterministic=True)
-
+        print(f"action: {action}")
         
 
         state, reward, terminated, truncated, _ = step_env(env, action)
