@@ -147,6 +147,8 @@ def train_actor_critic(config_path=None, plot=True):
             pass  # Replace with your implementation
 
         # TODO: Convert the collected episode data into batched tensors
+        state_batch = state_batch[1:]
+        action_batch = action_batch[1:]
 
         # assert len(state_batch) == len(action_batch), f"Values should be equal. |state_batch_len = {len(state_batch)}| |action_batch_len = {len(action_batch)}|"
 
@@ -165,7 +167,7 @@ def train_actor_critic(config_path=None, plot=True):
             actor_loss = compute_actor_loss(chosen_log_probs, return_batch)
 
             # optional 
-            actor_loss -=  config['value_loss_coef'] * entropy
+            # actor_loss -=  config['value_loss_coef'] * entropy
 
             if use_reinforce: #this is the REINFORCE case where we don't use a critic, so the advantage is just the return
                 print("Using REINFORCE")
