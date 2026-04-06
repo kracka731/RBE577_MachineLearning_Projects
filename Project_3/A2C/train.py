@@ -49,6 +49,8 @@ def run_lunar_lander(actor=None, video_filename="lunar_lander_example.mp4", conf
             state_tensor = torch.tensor(normalized_state, dtype=torch.float32)
             action = actor.get_action(state_tensor, deterministic=True)
 
+        
+
         state, reward, terminated, truncated, _ = step_env(env, action)
         total_reward += reward
 
@@ -95,9 +97,9 @@ def train_actor_critic(config_path=None, plot=True):
     actor.obs_normalizer = obs_normalizer
 
     actor_optim = optim.Adam(actor.parameters(), lr=config["actor_lr"])
-    critic_optim = (optim.Adam(critic.parameters(), lr=config["critic_lr"]) if use_a2c else None)
+    # critic_optim = (optim.Adam(critic.parameters(), lr=config["critic_lr"]) if use_a2c else None)
     actor_optim.zero_grad()
-    critic_optim.zero_grad()
+    # critic_optim.zero_grad()
 
     reward_history = np.zeros(config["num_episodes"])
 
@@ -124,6 +126,9 @@ def train_actor_critic(config_path=None, plot=True):
 
             # Take action and update env
             action = actor.get_action(state)
+            print(f"state: {state}\n")
+            print(f"action: {action}\n")
+            print(f"env: {env}\n")
             next_state, reward, episode_terminated, episode_truncated, info = step_env(env, action)
             obs_normalizer.update(next_state)
             next_state = torch.tensor(normalize_observation(next_state, obs_normalizer), dtype=torch.float32)
@@ -178,7 +183,7 @@ def train_actor_critic(config_path=None, plot=True):
                 actor_loss.backward()
                 critic_loss.backward()
                 actor_optim.step()
-                critic_optim.step()
+                # critic_optim.step()
                 # Replace with your implementation
             
             

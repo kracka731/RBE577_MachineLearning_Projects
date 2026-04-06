@@ -1,7 +1,9 @@
 import torch
+import torch 
 import torch.nn as nn
 import numpy as np
 import random
+from torch.distributions import Categorical
 
 class Actor(nn.Module):
     """Policy network for discrete LunarLander actions."""
@@ -80,7 +82,6 @@ class Actor(nn.Module):
         # action_indices = np.array(action, dtype=np.int32)
         action_indice = torch.zeros([1,4])
         # [row][column]
-        action_indice[0][action] = torch.tensor1 # assuming action is an integer from 0-3
         
 
         # TODO: Mark which action was selected at each step
@@ -111,17 +112,17 @@ class Actor(nn.Module):
         if deterministic:
             with torch.no_grad(): # to not train during decision
                 # Choose the best action
-                # consider logits and choose one with the highest probability
-                #
-                pass
+                # consider logits and choose one with the highest probability to be chosen action
+                dist = Categorical(logits=logits)
+                action = dist.sample()
+                # assert False, "you shouldn't be here" # Provide an error for now
 
         else: # stochastic, randomly choose an action 
             action = random.randrange(0, 4, 1) # choose a random action [0,1,2,3]
 
-        dist = torch.Categorical(logits=logits)
 
         # categorical function can give categorical distribution from softmax 
-        action = dist.sample()
+        # action = dist.sample()
         # log_prob = dist.log_prob(action)
 
         # TODO: Sample and return one action
