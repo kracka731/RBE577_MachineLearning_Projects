@@ -8,40 +8,26 @@ class Actor(nn.Module):
 
     def __init__(self, state_dim, action_dim, hidden_dim):
         super().__init__()
-        self.action_dim = action_dim
+        # self.action_dim = action_dim
         # TODO: Build the policy network
         # Hint: This module should transform a state vector into one score per action.
-        self.nn = None  # Replace with your implementation
+        # self.nn = None  # Replace with your implementation
         layers = [] 
-        # Set up layers (6 hidden layers according to hidden_dims)
-        prev_dim = state_dim
-        for dim in hidden_dim:
-            layers.extend([nn.Linear(prev_dim, dim), nn.ReLU()])
-            prev_dim = dim
-        layers.append(nn.Linear(prev_dim, action_dim))
+
+        # layer count is actually not described in the config file, so assuming here
+        layers.extend([nn.Linear(state_dim, hidden_dim), nn.ReLU()])
+        layers.extend([nn.Linear(hidden_dim, hidden_dim), nn.ReLU()])
+        layers.append(nn.Linear(hidden_dim, action_dim))
+
         self.layers = nn.Sequential(*layers)
 
         self.flatten = nn.Flatten()
         # Optimizer and other related setup handled in train.py
 
-    # def R(self, s, a):
-    #     reward = 0
-    #     # Shaping based on proximity to landing pad & stability 
-    #     # Encourage small velocity, upright angle 
-
-    #     # Penalty for using fuel when firing engines 
-    #     if a != 0:
-    #         reward -= 1
-
-    #     # Reward for successful landing 
-    #     if s[6] == 1 and s[7] == 1: 
-    #         reward += 100
-
-    #     # Penalty for crashing 
-    #     if crash:
-    #         reward -= 100
-
-    #     return reward
+    def forward(self, state):
+        flat_state=self.flatten(state)
+        logits = self.layers(flat_state)
+        return logits
 
     def evaluate_actions(self, state, action):
         """Return chosen-action log probs and policy entropy."""
@@ -68,7 +54,7 @@ class Actor(nn.Module):
         # 2: fire main engine | 3: fire right orientation engine
 
         # N = len(states) # Number of sampled experiences
-        entropy_coef = 1
+        # entropy_coef = 1
 
         #TODO Fill your code
         # Forward pass
@@ -113,8 +99,8 @@ class Actor(nn.Module):
         # TODO: Compute the entropy of the action distribution
         # Hint: Entropy should be larger when the policy is spread out and smaller when it is confident.
         # An entropy bonus can be added to the actor's objectrage exploration (but not in this implementation?)
-        # entropy = -torch.reduce_sum(chosen_log_prob * action_logits, entropy_coef) ive to encou
         entropy = action_logits.mean() # * entropy_coef
+
         return chosen_log_prob, entropy
     
     def get_action(self, state, deterministic=False):
@@ -125,8 +111,10 @@ class Actor(nn.Module):
         if deterministic:
             with torch.no_grad(): # to not train during decision
                 # Choose the best action
-                action = self(state)
-            pass  # Replace with your implementation
+                # consider logits and choose one with the highest probability
+                #
+                pass
+
         else: # stochastic, randomly choose an action 
             action = random.randrange(0, 4, 1) # choose a random action [0,1,2,3]
 
