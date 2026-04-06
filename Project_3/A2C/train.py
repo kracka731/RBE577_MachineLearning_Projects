@@ -142,7 +142,6 @@ def train_actor_critic(config_path=None, plot=True):
             state = next_state
             pass  # Replace with your implementation
 
-
         # TODO: Convert the collected episode data into batched tensors
         state_batch = [state]  # Replace with your implementation
         action_batch = [action]  # Replace with your implementation
@@ -154,8 +153,14 @@ def train_actor_critic(config_path=None, plot=True):
 
         # TODO: Evaluate the log-probabilities of the actions that were actually taken
         # Hint: The actor helper for this expects the batched states and chosen actions.
-
-        chosen_log_probs, _ = actor.evaluate_actions(state_batch, action_batch)  # Replace with your implementation
+        chosen_log_probs = []
+        entropy = []
+        for i in range(0, len(episode_states)):
+            prob, en = actor.evaluate_actions(episode_states[i], episode_actions[i])  # Replace with your implementation
+            print(f"chose prob: | {prob} | with entropy: | {en} |")
+            chosen_log_probs.append(prob[0:3])
+            entropy.append(en) 
+        # chosen_log_probs = torch.tensor(chosen_log_probs)
 
         # TODO: Clear any stale actor gradients before backpropagation
         # Hint: Optimizers in PyTorch accumulate gradients unless you reset them.
