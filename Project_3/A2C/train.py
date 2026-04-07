@@ -187,7 +187,7 @@ def train_actor_critic(config_path=None, plot=True):
                 # and a combined loss that updates both networks.
                 value_batch = critic(state_batch)
 
-                critic_loss = compute_critic_loss(return_batch, value_batch)
+                critic_loss = compute_critic_loss(return_batch, value_batch)*config['value_loss_coef']
                 critic_loss.requires_grad = True
                 
                 # Perform backprop

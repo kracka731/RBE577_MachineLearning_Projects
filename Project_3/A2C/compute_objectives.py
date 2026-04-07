@@ -55,7 +55,6 @@ def compute_actor_loss(chosen_log_probs, advantage_batch, grad_bounds=None):
     advantage_batch = normalize_advantage(advantage_batch)
 
     grad = torch.mean(chosen_log_probs * advantage_batch)
-    # print(grad)
     grad = torch.clamp(grad, min=-grad_bounds, max=grad_bounds)
     return grad
 
