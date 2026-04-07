@@ -8,10 +8,16 @@ import torch
 # print(2 % 3)
 # print(torch.arange(0, 5) % 3)
 
-action = 3
+# action = 3
 
-action_indice = torch.zeros([1,4])
-action_indice[0][action] = torch.tensor(1) # assuming action is an integer from 0-3
+# action_indice = torch.zeros([1,4])
+# action_indice[0][action] = torch.tensor(1) # assuming action is an integer from 0-3
         
 
-print(action_indice)
+# print(action_indice)
+
+a = torch.randn(4, 4)
+print(a)
+print(torch.sum(a, 0))
+b = torch.arange(4 * 5 * 6).view(4, 5, 6)
+torch.sum(b, (2, 1))

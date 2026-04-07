@@ -11,6 +11,7 @@ def compute_discounted_returns(rewards, gamma, bootstrap_value=None):
 
     # Initialize the running return Gt = the summation of returns for a timestep t
     running_return = 0  
+    
 
     # Accumulate discounted returns in reverse order
     # Hint: Each earlier timestep should include its own reward plus a discounted
@@ -18,6 +19,7 @@ def compute_discounted_returns(rewards, gamma, bootstrap_value=None):
     # So this means, start from the end (episode termination)   
     t = len(rewards) - 1
     for reward in reversed(rewards):
+        # print(f"rewards: {reward}")
         running_return += gamma**(t) * reward
         discounted_returns = torch.vstack([discounted_returns, torch.tensor(running_return)])
         t -= 1
@@ -25,8 +27,16 @@ def compute_discounted_returns(rewards, gamma, bootstrap_value=None):
     # Package the per-step returns into a single tensor
     # Hint: The training code expects one tensor containing all timesteps.
     discounted_returns = torch.flip(discounted_returns[1:], (0,))
+    # discounted_returns = torch.sum(discounted_returns)
+    # print(f"Discounted returns: {discounted_returns}")
 
     return discounted_returns
+
+    # advantages = torch.zeros_like(rewards)
+    # last_advantage = 0.0
+    # n_steps = len(rewards)
+
+    # for t in reversed(range(n_steps)):
 
 def compute_advantage(return_batch, value_batch):
     """A2C: compute difference in observed return vs critic's prediction"""
@@ -41,6 +51,9 @@ def normalize_advantage(advantage_batch):
     return (
         advantage_batch - advantage_batch.mean()
     ) / (advantage_batch.std(unbiased=False) + 1e-8)
+    # mean_adv = torch.mean(advantage_batch)
+    # std_adv = torch.std(advantage_batch) + 1e-8
+    # return (advantage_batch - mean_adv) / std_adv
 
 
 def compute_actor_loss(chosen_log_probs, advantage_batch, grad_bounds=None):
@@ -57,6 +70,9 @@ def compute_actor_loss(chosen_log_probs, advantage_batch, grad_bounds=None):
     grad = torch.mean(chosen_log_probs * advantage_batch)
     grad = torch.clamp(grad, min=-grad_bounds, max=grad_bounds)
     return grad
+
+    # actor_loss = -(chosen_log_probs * advantage_batch.detach()).mean()
+    # return actor_loss
 
 def compute_critic_loss(return_batch, value_batch):
     """Compute the MSE of the advantage"""

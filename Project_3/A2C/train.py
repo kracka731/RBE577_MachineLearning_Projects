@@ -48,7 +48,7 @@ def run_lunar_lander(actor=None, video_filename="lunar_lander_example.mp4", conf
             normalized_state = normalize_observation(state, obs_normalizer)
             state_tensor = torch.tensor(normalized_state, dtype=torch.float32)
             action = actor.get_action(state_tensor, deterministic=True)
-        print(f"action: {action}")
+        # print(f"action: {action}")
         
 
         state, reward, terminated, truncated, _ = step_env(env, action)
@@ -118,7 +118,7 @@ def train_actor_critic(config_path=None, plot=True):
         action_batch = torch.tensor([0])
 
         # Begin iterating through time 
-        #This is to prevent pathological cases where the episode never ends, we limit the number of steps per episode to max_ep_steps, but in practice for lunar lander it should end well before that
+        # This is to prevent pathological cases where the episode never ends, we limit the number of steps per episode to max_ep_steps, but in practice for lunar lander it should end well before that
         for _ in range(config["max_ep_steps"]):
             if episode_terminated or episode_truncated:
                 break
@@ -128,80 +128,151 @@ def train_actor_critic(config_path=None, plot=True):
             # to build returns and losses.
 
             # Take action and update env
-            action = actor.get_action(state)
+            action = actor.get_action(state, False)
             next_state, reward, episode_terminated, episode_truncated, info = step_env(env, action)
             obs_normalizer.update(next_state)
             next_state = torch.tensor(normalize_observation(next_state, obs_normalizer), dtype=torch.float32)
             
             # Store data
             episode_rewards.append(reward)
-            episode_reward += reward
             episode_states.append(next_state)
             episode_actions.append(action)
             state_batch = torch.vstack([state_batch, next_state])
             action_batch = torch.vstack([action_batch, torch.tensor(action)])
 
             state = next_state
-            pass  # Replace with your implementation
 
-        # TODO: Convert the collected episode data into batched tensors
+        # Convert the collected episode data into batched tensors
+        # print(state_batch)
         state_batch = state_batch[1:]
         action_batch = action_batch[1:]
-        reward_history[i_episode] = episode_reward
+        # reward_history[i_episode] = np.sum(episode_rewards) # not discounted sum
+
+        
 
         # assert len(state_batch) == len(action_batch), f"Values should be equal. |state_batch_len = {len(state_batch)}| |action_batch_len = {len(action_batch)}|"
-
+        # print(f"Episode rewards: {episode_rewards}")
         # Hint: Use the stored rewards together with gamma 
-        return_batch = compute_discounted_returns(episode_rewards, gamma=config["gamma"])  # Replace with your implementation
+        return_batch = compute_discounted_returns(episode_rewards, gamma=config["gamma"]) 
 
-        # TODO: Evaluate the log-probabilities of the actions that were actually taken
-        # Hint: The actor helper for this expects the batched states and chosen actions.
+        # Evaluate the log-probabilities of the actions that were actually taken
         chosen_log_probs, entropy = actor.evaluate_actions(state_batch, action_batch)
-        print(f"Training episode {i_episode}/{config['num_episodes']}. Current Entropy = {entropy}")
+        # print(f"Training episode {i_episode}/{config['num_episodes']}") # Current Entropy = {entropy}")
 
-        # TODO: Clear any stale actor gradients before backpropagation
-        # Hint: Optimizers in PyTorch accumulate gradients unless you reset them.
-        with torch.no_grad():  # Replace with your implementation
+        
 
+        # print(f"actor_loss: {actor_loss}")
+
+        # optional 
+        # actor_loss -=  config['value_loss_coef'] * entropy
+
+        if use_reinforce: #this is the REINFORCE case where we don't use a critic, so the advantage is just the return
+            # print("Using REINFORCE")
+            # Policy-gradient update for REINFORCE
             # Policy gradient update
             actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
             actor_loss.requires_grad = True
+            # Backpropagation & optimization
+            # Clear any stale actor gradients before backpropagation
+            # Hint: Optimizers in PyTorch accumulate gradients unless you reset them.
+            # with torch.no_grad(): 
+            actor_loss.backward()
+            actor_optim.step()
+            actor_optim.zero_grad()
 
-            print(f"actor_loss: {actor_loss}")
 
-            # optional 
-            # actor_loss -=  config['value_loss_coef'] * entropy
+        elif use_a2c:#This is the critic case where we compute the advantage using the critic's value estimates, and use that to compute the actor loss, and also compute the critic loss and backprop through both
+            # print("Using A2C")
+            # actor-critic update
+            # Hint: This branch should involve the critic's value estimates, an advantage term,
+            # and a combined loss that updates both networks.
+            value_batch = critic(state_batch)
+            
+            actor_loss = None # compute actor loss multiplied by advantage (from critic)
 
-            if use_reinforce: #this is the REINFORCE case where we don't use a critic, so the advantage is just the return
-                print("Using REINFORCE")
-                # TODO: Implement the policy-gradient update for REINFORCE
 
-                # Backpropagation & optimization
-                actor_loss.backward()
-                actor_optim.step()
-
-            elif use_a2c:#This is the critic case where we compute the advantage using the critic's value estimates, and use that to compute the actor loss, and also compute the critic loss and backprop through both
-                print("Using A2C")
-                # TODO: Implement the actor-critic update
-                # Hint: This branch should involve the critic's value estimates, an advantage term,
-                # and a combined loss that updates both networks.
-                value_batch = critic(state_batch)
-
-                critic_loss = compute_critic_loss(return_batch, value_batch)*config['value_loss_coef']
-                critic_loss.requires_grad = True
-                
-                # Perform backprop
+            critic_loss = compute_critic_loss(return_batch, value_batch)*config['value_loss_coef']
+            # critic_loss.requires_grad = True
+            
+            # Perform backprop
+            with torch.no_grad(): 
                 actor_loss.backward()
                 critic_loss.backward()
-                actor_optim.step()
-                critic_optim.step()
+            actor_optim.step()
+            actor_optim.zero_grad()
+            critic_optim.step()
+            critic_optim.zero_grad()
 
-                print(f"critic_loss: {critic_loss}")
+            # print(f"critic_loss: {critic_loss}")
 
-            
-            
 
-     #TODO: Implement the optimizer step to update the parameters of the actor and critic (if using A2C)
+        # Test loss every 10 episodes
+
+        raw_state = reset_env(env, seed=config["random_seed"] if i_episode == 0 else None)
+        obs_normalizer.update(raw_state)
+        state = torch.tensor(normalize_observation(raw_state, obs_normalizer), dtype=torch.float32)
+        episode_reward = 0.0
+        episode_states = []
+        episode_actions = []
+        episode_rewards = []
+        episode_terminated = False
+        episode_truncated = False
+        state_batch: torch.tensor = state
+        action_batch = torch.tensor([0])
+        if i_episode % 10 == 0:
+            with torch.no_grad():
+                for _ in range(config["max_ep_steps"]):
+                    if episode_terminated or episode_truncated:
+                        break
+                    # Interact with the environment for one step and record the transition
+                    # Hint: This block should choose an action from the actor, step the environment,
+                    # update the observation statistics, and save the information needed later
+                    # to build returns and losses.
+
+                    # Take action and update env
+                    normalized_state = normalize_observation(state, obs_normalizer)
+                    state_tensor = torch.tensor(normalized_state, dtype=torch.float32)
+                    # print("getting action")
+                    action = actor.get_action(state_tensor, True)
+                    # print(f"action {action} acquired")
+                    # action = actor.get_action(state, deterministic=True)
+                    next_state, reward, episode_terminated, episode_truncated, info = step_env(env, action)
+                    obs_normalizer.update(next_state)
+                    next_state = torch.tensor(normalize_observation(next_state, obs_normalizer), dtype=torch.float32)
+                    
+                    # Store data
+                    episode_rewards.append(reward)
+                    episode_states.append(next_state)
+                    episode_actions.append(action)
+                    state_batch = torch.vstack([state_batch, next_state])
+                    action_batch = torch.vstack([action_batch, torch.tensor(action)])
+
+                    state = next_state
+                # Convert the collected episode data into batched tensors
+                # print(state_batch)
+                state_batch = state_batch[1:]
+                action_batch = action_batch[1:]
+                reward_history[i_episode] = np.sum(episode_rewards) # not discounted sum
+
+                
+
+                # assert len(state_batch) == len(action_batch), f"Values should be equal. |state_batch_len = {len(state_batch)}| |action_batch_len = {len(action_batch)}|"
+                # print(f"Episode rewards: {episode_rewards}")
+                # Hint: Use the stored rewards together with gamma 
+                return_batch = compute_discounted_returns(episode_rewards, gamma=config["gamma"]) 
+
+                # Evaluate the log-probabilities of the actions that were actually taken
+                chosen_log_probs, entropy = actor.evaluate_actions(state_batch, action_batch)
+                # print(f"Training episode {i_episode}/{config['num_episodes']}") # Current Entropy = {entropy}")
+
+                # Policy gradient update
+                actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
+                actor_loss.requires_grad = True
+
+                print(f"actor_loss for episode {i_episode} in testing: {actor_loss}")
+                print(f"Total reward: {np.sum(episode_rewards)}")
+                            
+
 
     if plot:
         plt.figure()
