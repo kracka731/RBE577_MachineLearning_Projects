@@ -10,7 +10,7 @@
   "critic_lr": 0.0003,
   "gamma": 0.9,
   "hidden_dim": 256,
-  "num_episodes": 250,
+  "num_episodes": 500,
   "max_ep_steps": 1000,
   "reward_ma_window": 10,
   "random_seed": 42

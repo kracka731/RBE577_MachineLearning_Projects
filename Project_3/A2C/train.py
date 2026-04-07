@@ -147,6 +147,7 @@ def train_actor_critic(config_path=None, plot=True):
         # TODO: Convert the collected episode data into batched tensors
         state_batch = state_batch[1:]
         action_batch = action_batch[1:]
+        reward_history[i_episode] = episode_reward
 
         # assert len(state_batch) == len(action_batch), f"Values should be equal. |state_batch_len = {len(state_batch)}| |action_batch_len = {len(action_batch)}|"
 
