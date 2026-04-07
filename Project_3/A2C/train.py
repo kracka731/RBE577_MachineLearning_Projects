@@ -99,7 +99,8 @@ def train_actor_critic(config_path=None, plot=True):
     actor_optim = optim.Adam(actor.parameters(), lr=config["actor_lr"])
     critic_optim = (optim.Adam(critic.parameters(), lr=config["critic_lr"]) if use_a2c else None)
     actor_optim.zero_grad()
-    critic_optim.zero_grad()
+    if use_a2c:
+        critic_optim.zero_grad()
 
     reward_history = np.zeros(config["num_episodes"])
 
@@ -146,6 +147,7 @@ def train_actor_critic(config_path=None, plot=True):
         # TODO: Convert the collected episode data into batched tensors
         state_batch = state_batch[1:]
         action_batch = action_batch[1:]
+        reward_history[i_episode] = episode_reward
 
         # assert len(state_batch) == len(action_batch), f"Values should be equal. |state_batch_len = {len(state_batch)}| |action_batch_len = {len(action_batch)}|"
 
