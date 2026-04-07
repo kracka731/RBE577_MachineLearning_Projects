@@ -109,7 +109,13 @@ class Actor(nn.Module):
         # TODO: Compute the entropy of the action distribution
         # Hint: Entropy should be larger when the policy is spread out and smaller when it is confident.
         # An entropy bonus can be added to the actor's objectrage exploration (but not in this implementation?)
-        entropy = action_logits.mean() # * entropy_coef
+        # entropy = action_logits.mean() # * entropy_coef
+        dist = Categorical(logits=log_action_probs)
+        # print(f"dist: {dist}")
+        # bern = Bernoulli(action_logits)
+        # print(f"bern: {bern}")
+        entropy = dist.entropy().mean()
+        # entropy = torch.entropy(action_logits)
         # print(f"chosen_log_prob: {chosen_log_prob}")
 
         return chosen_log_prob, entropy
@@ -122,7 +128,7 @@ class Actor(nn.Module):
             # print(f"get_action logits: {logits}")
 
             # Return a greedy action when deterministic evaluation is requested
-            if deterministic != False:
+            if deterministic:
                 # print("running deterministic")
                 # Choose the best action
                 # consider logits and choose one with the highest probability to be chosen action
@@ -130,11 +136,8 @@ class Actor(nn.Module):
                 # print(f"dist: {dist}")
                 action = dist.sample()
 
-            elif deterministic == False: # stochastic, randomly choose an action 
+            else: # stochastic, randomly choose an action 
                 action = random.randrange(0, 4, 1) # choose a random action [0,1,2,3]
-            
-            else:
-                raise ValueError(f"Invalid value of determinisitic: {deterministic}")
 
         # categorical function can give categorical distribution from softmax 
         # action = dist.sample()

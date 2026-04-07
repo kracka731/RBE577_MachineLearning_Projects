@@ -71,7 +71,6 @@ def run_lunar_lander(actor=None, video_filename="lunar_lander_example.mp4", conf
 
 def test_actor(actor, env, obs_normalizer, i_episode):
     # Test loss every 10 episodes
-
     raw_state = reset_env(env, seed=config["random_seed"] if i_episode == 0 else None)
     obs_normalizer.update(raw_state)
     state = torch.tensor(normalize_observation(raw_state, obs_normalizer), dtype=torch.float32)
@@ -132,12 +131,11 @@ def test_actor(actor, env, obs_normalizer, i_episode):
 
             print(f"actor_loss for episode {i_episode} in testing: {actor_loss}")
             print(f"Total reward: {np.sum(episode_rewards)}")
+            print(f"Entropy: {entropy}")
     
     reward_history = np.sum(episode_rewards)
 
     return reward_history
-
-
 
 
 def train_actor_critic(config_path=None, plot=True):
@@ -228,6 +226,10 @@ def train_actor_critic(config_path=None, plot=True):
         # Evaluate the log-probabilities of the actions that were actually taken
         chosen_log_probs, entropy = actor.evaluate_actions(state_batch, action_batch)
         # print(f"Training episode {i_episode}/{config['num_episodes']}") # Current Entropy = {entropy}")
+
+        # if i_episode % 10 == 0:
+            # print(f"Stochastic Entropy: {entropy}")
+
 
         # print(f"actor_loss: {actor_loss}")
 
