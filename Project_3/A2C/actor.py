@@ -109,7 +109,7 @@ class Actor(nn.Module):
         # TODO: Compute the entropy of the action distribution
         # Hint: Entropy should be larger when the policy is spread out and smaller when it is confident.
         # An entropy bonus can be added to the actor's objectrage exploration (but not in this implementation?)
-        entropy = action_logits.mean() # * entropy_coef
+        entropy = action_logits.var() # * entropy_coef
         # print(f"chosen_log_prob: {chosen_log_prob}")
 
         return chosen_log_prob, entropy
@@ -131,6 +131,7 @@ class Actor(nn.Module):
                 action = dist.sample()
 
             elif deterministic == False: # stochastic, randomly choose an action 
+                # if entropy > random.randrange(0)
                 action = random.randrange(0, 4, 1) # choose a random action [0,1,2,3]
             
             else:

@@ -74,8 +74,8 @@ def compute_actor_loss(chosen_log_probs, advantage_batch, grad_bounds=None):
     # actor_loss = -(chosen_log_probs * advantage_batch.detach()).mean()
     # return actor_loss
 
-def compute_critic_loss(return_batch, value_batch):
+def compute_critic_loss(return_batch, value_batch, value_loss_coeff):
     """Compute the MSE of the advantage"""
     # Compute the value-function loss
     advantage = compute_advantage(return_batch, value_batch)
-    return torch.mean(advantage**2) 
+    return torch.mean(advantage**2)*value_loss_coeff 

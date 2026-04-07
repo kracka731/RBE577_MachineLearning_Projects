@@ -132,6 +132,7 @@ def test_actor(actor, env, obs_normalizer, i_episode):
 
             print(f"actor_loss for episode {i_episode} in testing: {actor_loss}")
             print(f"Total reward: {np.sum(episode_rewards)}")
+            print(f"entropy: {entropy}")
     
     reward_history = np.sum(episode_rewards)
 
@@ -182,6 +183,7 @@ def train_actor_critic(config_path=None, plot=True):
         episode_states = []
         episode_actions = []
         episode_rewards = []
+        episode_ends = []
         episode_terminated = False
         episode_truncated = False
         state_batch: torch.tensor = state
@@ -202,13 +204,16 @@ def train_actor_critic(config_path=None, plot=True):
             next_state, reward, episode_terminated, episode_truncated, info = step_env(env, action)
             obs_normalizer.update(next_state)
             next_state = torch.tensor(normalize_observation(next_state, obs_normalizer), dtype=torch.float32)
-            
+            done = int(episode_terminated | episode_truncated)
+
             # Store data
             episode_rewards.append(reward)
             episode_states.append(next_state)
             episode_actions.append(action)
+            episode_reward += reward
             state_batch = torch.vstack([state_batch, next_state])
             action_batch = torch.vstack([action_batch, torch.tensor(action)])
+            episode_ends.append(done)
 
             state = next_state
 
@@ -216,6 +221,7 @@ def train_actor_critic(config_path=None, plot=True):
         # print(state_batch)
         state_batch = state_batch[1:]
         action_batch = action_batch[1:]
+        # reward_history[i_episode] = episode_reward
         # reward_history[i_episode] = np.sum(episode_rewards) # not discounted sum
 
         
@@ -228,7 +234,8 @@ def train_actor_critic(config_path=None, plot=True):
         # Evaluate the log-probabilities of the actions that were actually taken
         chosen_log_probs, entropy = actor.evaluate_actions(state_batch, action_batch)
         # print(f"Training episode {i_episode}/{config['num_episodes']}") # Current Entropy = {entropy}")
-
+        if i_episode % 10 ==0:
+            print(f"entropy: {entropy}")
         # print(f"actor_loss: {actor_loss}")
 
         # optional 
@@ -255,17 +262,20 @@ def train_actor_critic(config_path=None, plot=True):
             # Hint: This branch should involve the critic's value estimates, an advantage term,
             # and a combined loss that updates both networks.
             value_batch = critic(state_batch)
+            
+            # actor_loss.requires_grad = True
 
-            actor_loss = None # compute actor loss multiplied by advantage (from critic)
+            next_target = torch.tensor(episode_rewards) + (1 - torch.tensor(episode_ends)) * config["gamma"] * value_batch
 
-
-            critic_loss = compute_critic_loss(return_batch, value_batch)*config['value_loss_coef']
+            critic_loss = compute_critic_loss(next_target, value_batch, config['value_loss_coef'])
             # critic_loss.requires_grad = True
+            advantage = compute_advantage(return_batch, value_batch)
+            actor_loss = compute_actor_loss(chosen_log_probs, advantage, config['grad_norm_clip'])
             
             # Perform backprop
             with torch.no_grad(): 
-                actor_loss.backward()
-                critic_loss.backward()
+                actor_loss.backward(retain_graph=True)
+                critic_loss.backward(retain_graph=True)
             actor_optim.step()
             actor_optim.zero_grad()
             critic_optim.step()

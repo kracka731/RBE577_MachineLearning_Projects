@@ -43,8 +43,8 @@ class ActorCritic(nn.Module):
         # The observations in this environment are images, so the network should
         # begin with a convolutional encoder rather than a simple MLP.
         # TODO: Build the convolutional encoder used for image observations
-        self.encoder = None  # Replace with your implementation
-        self.spatial_pool = None  # Replace with your implementation
+        self.encoder = nn.Conv2d(3, state_size[0], state_size[1])  # Replace with your implementation
+        self.spatial_pool = nn.MaxPool2d(2, 2)  # Replace with your implementation
 
         # TODO: Compute the flattened feature size after the encoder/pooling stage
         linear_input_size = None  # Replace with your implementation
@@ -52,25 +52,33 @@ class ActorCritic(nn.Module):
 
         # Hint: This shared block should sit between the CNN encoder and the
         # actor/critic-specific heads.
-        self.shared_layers = None  # Replace with your implementation
+        nn_shared_layers = []
+        prev_dim = linear_input_size
+        for layer_dim in shared_layers:
+            nn_shared_layers.extend([nn.Linear(prev_dim, layer_dim), nn.ReLU()])
+            prev_dim = layer_dim
+        # TODO: this following line may not be necessary?
+        nn_shared_layers.append(nn.Linear(prev_dim, shared_layers[-1]))
+        self.shared_layers = nn.Sequential(*nn_shared_layers)
 
         # Critic network
         # TODO: Build the critic branch
+        prev_dim = shared_layers[-1]
         if critic_hidden_layers:
-            self.critic_hidden = None  # Replace with your implementation
-            self.critic = None  # Replace with your implementation
+            self.critic_hidden = build_hidden_layer(prev_dim, critic_hidden_layers)
+            self.critic = nn.Linear(prev_dim, 1)  # Replace with your implementation
         else:
-            self.critic_hidden = None  # Replace with your implementation
-            self.critic = None  # Replace with your implementation
+            self.critic_hidden = None
+            self.critic = nn.Linear(prev_dim, 1)  # Replace with your implementation
 
         # Actor network
         # TODO: Build the actor branch
         if actor_hidden_layers:
-            self.actor_hidden = None  # Replace with your implementation
-            self.actor = None  # Replace with your implementation
+            self.actor_hidden = build_hidden_layer(prev_dim, actor_hidden_layers)
+            self.actor = nn.Linear(actor_hidden_layers[-1], action_size) # Replace with your implementation
         else:
-            self.actor_hidden = None  # Replace with your implementation
-            self.actor = None  # Replace with your implementation
+            self.actor_hidden = None 
+            self.actor = nn.Linear(prev_dim, action_size)  # Replace with your implementation
 
         if self.init_type is not None:
             self.shared_layers.apply(self._initialize)
@@ -80,6 +88,8 @@ class ActorCritic(nn.Module):
                 self.critic_hidden.apply(self._initialize)
             if self.actor_hidden is not None:
                 self.actor_hidden.apply(self._initialize)
+
+        self.flatten = nn.Flatten()
 
     def _initialize(self, n):
         if isinstance(n, nn.Linear):
@@ -115,6 +125,10 @@ class ActorCritic(nn.Module):
         # Hint: Pass the state through the convolutional encoder, pool the spatial
         # features, flatten the result, and then run it through the shared MLP.
         x = None  # Replace with your implementation
+        x = self.encoder(x)
+        x = self.spatial_pool(F.relu(x))
+        x = self.flatten(x)
+        x = self.shared_layers(x)
 
         # Critic branch
         # TODO: Produce the state-value estimate from the shared features
