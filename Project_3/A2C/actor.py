@@ -61,6 +61,7 @@ class Actor(nn.Module):
         # Forward pass
         with torch.no_grad(): # In order to not include the gradient function to save time and computation
             action_logits = self.layers(states) 
+            # action_logits = self.forward(states)
         # print(f"action_logits: {action_logits}")
 
         # A logit is a bijective function that maps probabilities ([0,1])
@@ -77,7 +78,7 @@ class Actor(nn.Module):
         # Hint: The loss is written in terms of log probabilities rather than plain probabilities.
         # The log probablities of all possible actions
         # log pi_theta(a|s)
-        log_action_probs = torch.log(action_logits)
+        log_action_probs = torch.log1p(action_logits)
 
         # TODO may need to be altered to properly manage tensors (but is good according to practices online)
         # actions = torch.cat(actions, self.get_action(state[-1], False), 0) # choose an action and append it (non-deterministic) 

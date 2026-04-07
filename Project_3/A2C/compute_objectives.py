@@ -26,7 +26,7 @@ def compute_discounted_returns(rewards, gamma, bootstrap_value=None):
     # Hint: The training code expects one tensor containing all timesteps.
     discounted_returns = torch.flip(discounted_returns[1:], (0,))
 
-    return discounted_returns  
+    return discounted_returns
 
 def compute_advantage(return_batch, value_batch):
     """A2C: compute difference in observed return vs critic's prediction"""
@@ -43,7 +43,7 @@ def normalize_advantage(advantage_batch):
     ) / (advantage_batch.std(unbiased=False) + 1e-8)
 
 
-def compute_actor_loss(chosen_log_probs, advantage_batch):
+def compute_actor_loss(chosen_log_probs, advantage_batch, grad_bounds=None):
     """Compute policy loss through REINFORCE: derivative of the objective 
     function = grad(J(theta))"""
     # First term sum(grad(log(policy)) 
@@ -52,8 +52,12 @@ def compute_actor_loss(chosen_log_probs, advantage_batch):
 
     # Second term Gt or At is advantage_batch 
     # Determines how strongly to reinforce the direction taken by policy gradient
+    advantage_batch = normalize_advantage(advantage_batch)
 
-    return torch.sum(chosen_log_probs * advantage_batch)
+    grad = torch.mean(chosen_log_probs * advantage_batch)
+    # print(grad)
+    grad = torch.clamp(grad, min=-grad_bounds, max=grad_bounds)
+    return grad
 
 def compute_critic_loss(return_batch, value_batch):
     """Compute the MSE of the advantage"""

@@ -164,7 +164,7 @@ def train_actor_critic(config_path=None, plot=True):
         with torch.no_grad():  # Replace with your implementation
 
             # Policy gradient update
-            actor_loss = compute_actor_loss(chosen_log_probs, return_batch)
+            actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
             actor_loss.requires_grad = True
 
             print(f"actor_loss: {actor_loss}")
