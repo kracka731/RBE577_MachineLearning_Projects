@@ -97,9 +97,10 @@ def train_actor_critic(config_path=None, plot=True):
     actor.obs_normalizer = obs_normalizer
 
     actor_optim = optim.Adam(actor.parameters(), lr=config["actor_lr"])
-    critic_optim = (optim.Adam(critic.parameters(), lr=config["critic_lr"]) if use_a2c else None)
     actor_optim.zero_grad()
-    critic_optim.zero_grad()
+    if use_a2c:
+        critic_optim = (optim.Adam(critic.parameters(), lr=config["critic_lr"]) if use_a2c else None)
+        critic_optim.zero_grad()
 
     reward_history = np.zeros(config["num_episodes"])
 
@@ -165,6 +166,8 @@ def train_actor_critic(config_path=None, plot=True):
             actor_loss = compute_actor_loss(chosen_log_probs, return_batch)
             actor_loss.requires_grad = True
 
+            print(f"actor_loss: {actor_loss}")
+
             # optional 
             # actor_loss -=  config['value_loss_coef'] * entropy
 
@@ -175,7 +178,6 @@ def train_actor_critic(config_path=None, plot=True):
                 # Backpropagation & optimization
                 actor_loss.backward()
                 actor_optim.step()
-                # Replace with your implementation
 
             elif use_a2c:#This is the critic case where we compute the advantage using the critic's value estimates, and use that to compute the actor loss, and also compute the critic loss and backprop through both
                 print("Using A2C")
@@ -192,7 +194,9 @@ def train_actor_critic(config_path=None, plot=True):
                 critic_loss.backward()
                 actor_optim.step()
                 critic_optim.step()
-                # Replace with your implementation
+
+                print(f"critic_loss: {critic_loss}")
+
             
             
 
