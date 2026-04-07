@@ -137,6 +137,7 @@ class Actor(nn.Module):
                 action = dist.sample()
 
             else: # stochastic, randomly choose an action 
+                # if entropy > random.randrange(0)
                 action = random.randrange(0, 4, 1) # choose a random action [0,1,2,3]
 
         # categorical function can give categorical distribution from softmax 
