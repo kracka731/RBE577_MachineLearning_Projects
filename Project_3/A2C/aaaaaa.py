@@ -165,7 +165,7 @@ def train_actor_critic(config_path=None, plot=True):
         return_batch = compute_discounted_returns(episode_rewards, gamma=config["gamma"]) 
 
         # Evaluate the log-probabilities of the actions that were actually taken
-        chosen_log_prob, entropy = actor.evaluate_actions(state_batch, action_batch)
+        chosen_log_probs, entropy = actor.evaluate_actions(state_batch, action_batch)
 
 
         # probs = actor(state)
@@ -181,7 +181,7 @@ def train_actor_critic(config_path=None, plot=True):
             # print("Using REINFORCE")
             # Policy-gradient update for REINFORCE
             # Policy gradient update
-            actor_loss = compute_actor_loss(chosen_log_prob, return_batch, config['grad_norm_clip'])
+            actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
 
             # Backpropagation & optimization
             # Clear any stale actor gradients before backpropagation
