@@ -1,0 +1,5 @@
+2026-04-08 04:05:30 - INFO - Logging to logs/A3C_20260408-040530
+2026-04-08 04:05:30 - INFO - Starting A3C training for Kuka pick and place task...
+2026-04-08 04:05:30 - INFO - Using 4 workers on cuda
+2026-04-08 04:05:30 - INFO - Final model saved to None. Training complete!
+2026-04-08 04:05:30 - INFO - Training completed in 0h 0m 0s
