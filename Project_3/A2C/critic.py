@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 
 
 class Critic(nn.Module):
@@ -33,3 +34,4 @@ class Critic(nn.Module):
 
         x = self.layers(state)
         return x  
+        # return torch.softmax(x, dim = -1)

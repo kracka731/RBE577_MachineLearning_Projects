@@ -69,7 +69,7 @@ def run_lunar_lander(actor=None, video_filename="lunar_lander_example.mp4", conf
     video_path = os.path.join(VIDEOS_DIR, video_filename)
     imageio.mimsave(video_path, frames, fps=20, macro_block_size=1)
 
-def test_actor(actor, env, obs_normalizer, i_episode):
+def test_actor(actor, critic, env, obs_normalizer, i_episode):
     # Test loss every 10 episodes
     raw_state = reset_env(env, seed=config["random_seed"] if i_episode == 0 else None)
     obs_normalizer.update(raw_state)
@@ -130,9 +130,19 @@ def test_actor(actor, env, obs_normalizer, i_episode):
 
             # Policy gradient update
             actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
+
             # actor_loss.requires_grad = True
 
-            print(f"actor_loss for episode {i_episode} in testing: {actor_loss}")
+            print(f"episode {i_episode} testing actor_loss: {actor_loss}")
+            if config["algorithm"].lower() == "a2c":
+                value_batch = critic(state_batch)
+            
+                # actor_loss.requires_grad = True
+
+                next_target = torch.tensor(episode_rewards) + (1 - torch.tensor(episode_ends)) * config["gamma"] * value_batch
+
+                critic_loss = compute_critic_loss(next_target, value_batch, config['value_loss_coef'])
+                print(f"episode {i_episode} testing critic_loss: {critic_loss}")
             print(f"Total reward: {np.sum(episode_rewards)}")
             print(f"Entropy: {entropy.mean()}")
     
@@ -274,7 +284,8 @@ def train_actor_critic(config_path=None, plot=True):
             next_target = torch.tensor(episode_rewards) + (1 - torch.tensor(episode_ends)) * config["gamma"] * value_batch
 
             critic_loss = compute_critic_loss(next_target, value_batch, config['value_loss_coef'])
-            # critic_loss.requires_grad = True
+            # if i_episode % 5 == 0:
+            #     print(f"episode {i_episode} critic_loss: {critic_loss}")
             advantage = compute_advantage(return_batch, value_batch)
             actor_loss = compute_actor_loss(chosen_log_probs, advantage, config['grad_norm_clip'])
             
@@ -287,10 +298,7 @@ def train_actor_critic(config_path=None, plot=True):
             critic_optim.step()
             critic_optim.zero_grad()
 
-            # print(f"critic_loss: {critic_loss}")
-
-
-        reward_history[i_episode] = test_actor(actor, env, obs_normalizer, i_episode)
+        reward_history[i_episode] = test_actor(actor, critic, env, obs_normalizer, i_episode)
     print(f"avg reward: {reward_history.mean()}")
 
                             

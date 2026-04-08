@@ -43,7 +43,8 @@ def compute_advantage(return_batch, value_batch):
     # Compute the advantage estimate
     # Hint: This quantity should capture how much better or worse the observed return
     # was compared with the critic's prediction.
-    return normalize_advantage(return_batch - value_batch)  
+    # return normalize_advantage(return_batch - value_batch)  
+    return return_batch - value_batch 
 
 def normalize_advantage(advantage_batch):
     if advantage_batch.numel() <= 1:

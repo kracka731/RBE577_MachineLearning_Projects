@@ -1,5 +1,4 @@
 import torch
-import torch 
 import torch.nn as nn
 import numpy as np
 import random
@@ -129,28 +128,19 @@ class Actor(nn.Module):
         # Run the policy on a single state - Forward pass
         with torch.no_grad(): # In order to not include the gradient function to save time and computation
             logits = self(state) 
-            logits = self.forward(state)
+            # logits = self.forward(state)
 
             # Return a greedy action when deterministic evaluation is requested
             if deterministic:
                 # print("running deterministic")
                 # Choose the best action
                 # consider logits and choose one with the highest probability to be chosen action
-                # action = torch.argmax(logits)
-                # dist = Categorical(logits)
-                
-                # action = dist.sample()
                 action = int(torch.argmax(logits).item())
-
 
                 # print(f"LOGITS:    {logits}")
                 # print(f"ACTION:    {action}")
 
             else: # stochastic, randomly choose an action 
-                # dist = Categorical(logits)
-                
-                # action = dist.sample()
-
                 dist = Categorical(logits)
                 action = int(dist.sample().item())
                 # action = random.randrange(0, 4, 1) # choose a random action [0,1,2,3]
@@ -158,5 +148,5 @@ class Actor(nn.Module):
         # categorical function can give categorical distribution from softmax 
         
         # Return one action
-        return int(action)  # Replace with your implementation
+        return action
 
