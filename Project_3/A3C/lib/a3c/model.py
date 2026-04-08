@@ -35,7 +35,7 @@ class ActorCritic(nn.Module):
         # TODO: Create a learnable parameter that controls policy exploration
         # Hint: The actor predicts the center of a continuous action distribution,
         # but the policy also needs a learned spread term for each action dimension.
-        self.sigma = None  # Replace with your implementation
+        self.sigma = nn.Parameter(torch.zeros(action_size))  # Replace with your implementation
 
         critic_hidden_layers = critic_hidden_layers or []
         actor_hidden_layers = actor_hidden_layers or []
@@ -43,30 +43,34 @@ class ActorCritic(nn.Module):
         # The observations in this environment are images, so the network should
         # begin with a convolutional encoder rather than a simple MLP.
         # TODO: Build the convolutional encoder used for image observations
-        self.encoder = nn.Conv2d(3, state_size[0], state_size[1])  # Replace with your implementation
-        self.spatial_pool = nn.MaxPool2d(2, 2)  # Replace with your implementation
+        channels_in, height_in, width_in = 3, state_size[0], state_size[1]
+        self.encoder = nn.Sequential(nn.Conv2d(channels_in, channels_in, kernel_size=int(height_in/2+1)), 
+                                     nn.ReLU())  # Replace with your implementation
+        self.spatial_pool = nn.MaxPool2d(2, stride=2)  # Replace with your implementation
+        ## Kasia-written note: 
+        # max pooling -> outputs feature map of most prominent features (edges, textures, etc)
+        # avg pooling -> outputs generalized/average of features in a patch. generalized, preserves context
+        # adaptive pool-> specify output size. kernel size & stride automatically chosen
 
         # TODO: Compute the flattened feature size after the encoder/pooling stage
         linear_input_size = None  # Replace with your implementation
-
+        with torch.no_grad():
+            dummy = torch.zeros(1, channels_in, height_in, width_in)
+            conv_out = self.encoder(dummy)
+            conv_out = self.spatial_pool(conv_out)
+            linear_input_size = conv_out.view(1, -1).size(1)
 
         # Hint: This shared block should sit between the CNN encoder and the
         # actor/critic-specific heads.
-        nn_shared_layers = []
-        prev_dim = linear_input_size
-        for layer_dim in shared_layers:
-            nn_shared_layers.extend([nn.Linear(prev_dim, layer_dim), nn.ReLU()])
-            prev_dim = layer_dim
-        # TODO: this following line may not be necessary?
-        nn_shared_layers.append(nn.Linear(prev_dim, shared_layers[-1]))
-        self.shared_layers = nn.Sequential(*nn_shared_layers)
+        self.shared_layers = nn.Sequential(*build_hidden_layer(linear_input_size, shared_layers))
 
         # Critic network
         # TODO: Build the critic branch
         prev_dim = shared_layers[-1]
         if critic_hidden_layers:
-            self.critic_hidden = build_hidden_layer(prev_dim, critic_hidden_layers)
-            self.critic = nn.Linear(prev_dim, 1)  # Replace with your implementation
+            self.critic_hidden = nn.Sequential(*build_hidden_layer(prev_dim, critic_hidden_layers))
+            last_dim = critic_hidden_layers[-1]
+            self.critic = nn.Linear(last_dim, 1)  # Replace with your implementation
         else:
             self.critic_hidden = None
             self.critic = nn.Linear(prev_dim, 1)  # Replace with your implementation
@@ -74,8 +78,9 @@ class ActorCritic(nn.Module):
         # Actor network
         # TODO: Build the actor branch
         if actor_hidden_layers:
-            self.actor_hidden = build_hidden_layer(prev_dim, actor_hidden_layers)
-            self.actor = nn.Linear(actor_hidden_layers[-1], action_size) # Replace with your implementation
+            self.actor_hidden = nn.Sequential(*build_hidden_layer(prev_dim, actor_hidden_layers))
+            last_dim = actor_hidden_layers[-1]
+            self.actor = nn.Linear(last_dim, action_size) # Replace with your implementation
         else:
             self.actor_hidden = None 
             self.actor = nn.Linear(prev_dim, action_size)  # Replace with your implementation
@@ -124,7 +129,7 @@ class ActorCritic(nn.Module):
         # TODO: Encode the image input into shared features
         # Hint: Pass the state through the convolutional encoder, pool the spatial
         # features, flatten the result, and then run it through the shared MLP.
-        x = None  # Replace with your implementation
+        x = state  # Replace with your implementation
         x = self.encoder(x)
         x = self.spatial_pool(F.relu(x))
         x = self.flatten(x)
@@ -133,21 +138,33 @@ class ActorCritic(nn.Module):
         # Critic branch
         # TODO: Produce the state-value estimate from the shared features
         # Hint: Optionally apply critic-specific hidden layers before the final value head.
-        v = None  # Replace with your implementation
-        value = None  # Replace with your implementation
+        if self.critic_hidden is None:
+            v = x
+        else:
+            v = self.critic_hidden(x)  # Replace with your implementation
+        value = self.critic(v)  # Replace with your implementation
 
         # Actor branch
         # TODO: Produce the policy location output from the shared features
-        a = None  # Replace with your implementation
-        action_loc = None  # Replace with your implementation
+        if self.actor_hidden is None:
+            a = x  # Replace with your implementation
+        else:
+            a = self.actor_hidden(x)  # Replace with your implementation
+        action_loc = self.actor(a)  # Replace with your implementation
+
+        # Update std dev 
+        sigma = torch.exp(self.sigma).expand_as(action_loc)
 
         return action_loc, value
 
     def get_action_distribution(self, action_loc):
         """Build a tanh-squashed Gaussian policy over bounded actions."""
         # TODO: Convert the learnable exploration parameter into a valid standard deviation
-        sigma = None  # Replace with your implementation
+        sigma = torch.std(self.sigma, dim=0)  # Replace with your implementation
 
         # TODO: Build the bounded continuous action distribution
         # Hint: The current setup uses a Gaussian base distribution together with a squashing transform.
-        return None  # Replace with your implementation
+        base_dist = Normal(loc=action_loc.mean(), scale=sigma) 
+        transforms = [Independent(), TanhTransform()] # FIXME: maybe just tanh? maybe tanh then indep? 
+        dist = TransformedDistribution(base_dist, transforms)
+        return dist  # Replace with your implementation

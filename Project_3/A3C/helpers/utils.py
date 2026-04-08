@@ -111,6 +111,7 @@ def build_hidden_layer(input_dim, hidden_layers):
 
     for hidden_dim in hidden_layers:
         layers.append(nn.Linear(previous_dim, hidden_dim))
+        # FIXME: no Relu??
         previous_dim = hidden_dim
 
     return nn.ModuleList(layers)

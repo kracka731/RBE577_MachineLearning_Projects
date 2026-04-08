@@ -5,7 +5,7 @@ import torch.multiprocessing as mp
 
 from helpers.config import load_config
 from helpers.logger import A3CLogger
-from helpers.utils import get_kuka_action_dim
+from helpers.utils import get_kuka_action_dim, get_network_input_shape
 from lib.a3c.agent import worker_process
 from lib.a3c.model import ActorCritic
 from lib.a3c.shared_optim import SharedAdam
@@ -14,12 +14,16 @@ from lib.a3c.shared_optim import SharedAdam
 def build_global_model(config, device):
     """Create the shared global actor-critic model."""
     # TODO: Build the shared global actor-critic network
+    state_dim = get_network_input_shape(config)
+    action_dim = get_kuka_action_dim(config)
+    net = config['network']
+
     # Hint: The global model should use the same architecture as each worker's
     # local model, but this instance must also be prepared for parameter sharing.
-    model = None  # Replace with your implementation
+    model = ActorCritic(state_dim, action_dim, net["shared_layers"], net["critic_hidden_layers"], net["actor_hidden_layers"], init_type=net["init_type"])  # Replace with your implementation
 
     # TODO: Move the global model parameters into shared memory
-    pass  # Replace with your implementation
+    model.to(device)  # Replace with your implementation
 
     return model
 
@@ -52,7 +56,7 @@ def train_a3c():
     # TODO: Create the shared training objects used by all workers
 
     # interval statistics for logging.
-    global_net = None  # Replace with your implementation
+    global_net = build_global_model(config, device)  # Replace with your implementation
     optimizer = None  # Replace with your implementation
     global_ep = None  # Replace with your implementation
     lock = None  # Replace with your implementation
