@@ -285,6 +285,7 @@ def train_actor_critic(config_path=None, plot=True):
 
 
         reward_history[i_episode] = test_actor(actor, env, obs_normalizer, i_episode)
+    print(f"avg reward: {reward_history.mean()}")
 
                             
 

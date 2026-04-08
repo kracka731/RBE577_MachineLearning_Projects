@@ -136,6 +136,9 @@ class Actor(nn.Module):
                 # Choose the best action
                 # consider logits and choose one with the highest probability to be chosen action
                 action = torch.argmax(logits)
+                dist = Categorical(logits)
+                
+                action = dist.sample()
 
                 # print(f"LOGITS:    {logits}")
                 # print(f"ACTION:    {action}")
@@ -144,6 +147,7 @@ class Actor(nn.Module):
                 dist = Categorical(logits)
                 
                 action = dist.sample()
+                # action = random.randrange(0, 4, 1) # choose a random action [0,1,2,3]
 
         # categorical function can give categorical distribution from softmax 
         
