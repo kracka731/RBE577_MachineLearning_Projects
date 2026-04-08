@@ -76,6 +76,9 @@ def test_actor(actor, env, obs_normalizer, i_episode):
     state = torch.tensor(normalize_observation(raw_state, obs_normalizer), dtype=torch.float32)
     episode_states = []
     episode_actions = []
+    episode_ends = []
+    episode_reward = 0.0
+
     episode_rewards = []
     episode_terminated = False
     episode_truncated = False
@@ -83,7 +86,7 @@ def test_actor(actor, env, obs_normalizer, i_episode):
     action_batch = torch.tensor([0])
     if i_episode % 10 == 0:
         with torch.no_grad():
-            for _ in range(config["max_ep_steps"]):
+            for iteration in range(config["max_ep_steps"]):
                 if episode_terminated or episode_truncated:
                     break
                 # Interact with the environment for one step and record the transition
@@ -92,24 +95,24 @@ def test_actor(actor, env, obs_normalizer, i_episode):
                 # to build returns and losses.
 
                 # Take action and update env
-                normalized_state = normalize_observation(state, obs_normalizer)
-                state_tensor = torch.tensor(normalized_state, dtype=torch.float32)
-                # print("getting action")
-                action = actor.get_action(state_tensor, True)
-                # print(f"action {action} acquired")
-                # action = actor.get_action(state, deterministic=True)
+                action = actor.get_action(state, False)
                 next_state, reward, episode_terminated, episode_truncated, info = step_env(env, action)
+                
+                episode_rewards.append(reward)
+                episode_actions.append(action)
+                if iteration == 0:
+                    state_batch: torch.tensor = state
+                    action_batch = torch.tensor(action)
+                state_batch = torch.vstack([state_batch, state])
+                action_batch = torch.vstack([action_batch, torch.tensor(action)])
+                episode_ends.append(int(episode_terminated | episode_truncated))
+
                 obs_normalizer.update(next_state)
                 next_state = torch.tensor(normalize_observation(next_state, obs_normalizer), dtype=torch.float32)
-                
-                # Store data
-                episode_rewards.append(reward)
-                episode_states.append(next_state)
-                episode_actions.append(action)
-                state_batch = torch.vstack([state_batch, next_state])
-                action_batch = torch.vstack([action_batch, torch.tensor(action)])
-
                 state = next_state
+                # Store data
+                # episode_states.append(next_state)
+                episode_reward += reward
             # Convert the collected episode data into batched tensors
             # print(state_batch)
             state_batch = state_batch[1:]
@@ -127,7 +130,7 @@ def test_actor(actor, env, obs_normalizer, i_episode):
 
             # Policy gradient update
             actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
-            actor_loss.requires_grad = True
+            # actor_loss.requires_grad = True
 
             print(f"actor_loss for episode {i_episode} in testing: {actor_loss}")
             print(f"Total reward: {np.sum(episode_rewards)}")
@@ -188,7 +191,7 @@ def train_actor_critic(config_path=None, plot=True):
 
         # Begin iterating through time 
         # This is to prevent pathological cases where the episode never ends, we limit the number of steps per episode to max_ep_steps, but in practice for lunar lander it should end well before that
-        for _ in range(config["max_ep_steps"]):
+        for iteration in range(config["max_ep_steps"]):
             if episode_terminated or episode_truncated:
                 break
             # TODO: Interact with the environment for one step and record the transition
@@ -199,19 +202,22 @@ def train_actor_critic(config_path=None, plot=True):
             # Take action and update env
             action = actor.get_action(state, False)
             next_state, reward, episode_terminated, episode_truncated, info = step_env(env, action)
+            
+            episode_rewards.append(reward)
+            episode_actions.append(action)
+            if iteration == 0:
+                state_batch: torch.tensor = state
+                action_batch = torch.tensor(action)
+            state_batch = torch.vstack([state_batch, state])
+            action_batch = torch.vstack([action_batch, torch.tensor(action)])
+            episode_ends.append(int(episode_terminated | episode_truncated))
+
             obs_normalizer.update(next_state)
             next_state = torch.tensor(normalize_observation(next_state, obs_normalizer), dtype=torch.float32)
-            done = int(episode_terminated | episode_truncated)
-
             # Store data
-            episode_rewards.append(reward)
-            episode_states.append(next_state)
-            episode_actions.append(action)
+            # episode_states.append(next_state)
             episode_reward += reward
-            state_batch = torch.vstack([state_batch, next_state])
-            action_batch = torch.vstack([action_batch, torch.tensor(action)])
-            episode_ends.append(done)
-
+            
             state = next_state
 
         # Convert the collected episode data into batched tensors
@@ -246,7 +252,7 @@ def train_actor_critic(config_path=None, plot=True):
             # Policy-gradient update for REINFORCE
             # Policy gradient update
             actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
-            actor_loss.requires_grad = True
+            # actor_loss.requires_grad = True
             # Backpropagation & optimization
             # Clear any stale actor gradients before backpropagation
             # Hint: Optimizers in PyTorch accumulate gradients unless you reset them.

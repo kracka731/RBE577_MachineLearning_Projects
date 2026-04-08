@@ -60,9 +60,8 @@ class Actor(nn.Module):
 
         #TODO Fill your code
         # Forward pass
-        with torch.no_grad(): # In order to not include the gradient function to save time and computation
-            # action_logits = self(states) 
-            action_logits = self.forward(states)
+        # with torch.no_grad(): # In order to not include the gradient function to save time and computation
+        action_logits = self(states)
         
         # A logit is a bijective function that maps probabilities ([0,1])
         # Can be articulated is pi_theta(a_i, s_i) in math
@@ -72,32 +71,34 @@ class Actor(nn.Module):
         # Hint: You will need these when measuring how uncertain the policy is.
         # This portion uses what the model has learned to predict the likely best next action
         # Specifically considering the current state 
-        # action_probs = self(state)
         dist = Categorical(action_logits)
 
         # TODO: Convert the raw outputs into log-probabilities
         # Hint: The loss is written in terms of log probabilities rather than plain probabilities.
         # The log probablities of all possible actions
         # log pi_theta(a|s)
-        # log_action_probs = torch.log1p(action_logits)
-        log_action_probs = dist.log_prob(actions.transpose(0, 1)).flatten()
+        # log_action_probs = dist.log_prob(actions.transpose(0, 1)).flatten()
 
-        # 
-        action_oh = torch.zeros([len(actions),4])
-        chosen_log_prob = torch.zeros([len(actions),4])
+        # # 
+        # action_oh = torch.zeros([len(actions),4])
+        # chosen_log_prob = torch.zeros([len(actions),4])
         # [row][column]
         
 
         # Mark which action was selected at each step
         # Hint: The provided `action` tensor contains indices, but you need a representation
         # that can isolate one action per row from the full action distribution.
-        n=0
-        for action in actions:
-            action_oh[n][action] = torch.tensor(1.) # assuming action is an integer from 0-3
-            chosen_log_prob[n] = log_action_probs[n] * action_oh[n]
-            n+=1
+        # n=0
+        # for action in actions:
+        #     action_oh[n][action] = torch.tensor(1.) # assuming action is an integer from 0-3
+        #     chosen_log_prob[n] = log_action_probs[n] * action_oh[n]
+        #     n+=1
 
         # print(f"action_oh = {action_oh}")
+
+        actions = actions.view(-1)
+        chosen_log_probs = dist.log_prob(actions)
+
 
 
         # action_oh stands for action_one-hot
@@ -122,7 +123,7 @@ class Actor(nn.Module):
         # print(f"categoric: {dist.probs[0]}")
         # print(f"entropy:   {entropy[0]}")
 
-        return chosen_log_prob, entropy
+        return chosen_log_probs, entropy
     
     def get_action(self, state, deterministic):
         # Run the policy on a single state - Forward pass
@@ -135,18 +136,23 @@ class Actor(nn.Module):
                 # print("running deterministic")
                 # Choose the best action
                 # consider logits and choose one with the highest probability to be chosen action
-                action = torch.argmax(logits)
-                dist = Categorical(logits)
+                # action = torch.argmax(logits)
+                # dist = Categorical(logits)
                 
-                action = dist.sample()
+                # action = dist.sample()
+                action = int(torch.argmax(logits).item())
+
 
                 # print(f"LOGITS:    {logits}")
                 # print(f"ACTION:    {action}")
 
             else: # stochastic, randomly choose an action 
-                dist = Categorical(logits)
+                # dist = Categorical(logits)
                 
-                action = dist.sample()
+                # action = dist.sample()
+
+                dist = Categorical(logits)
+                action = int(dist.sample().item())
                 # action = random.randrange(0, 4, 1) # choose a random action [0,1,2,3]
 
         # categorical function can give categorical distribution from softmax 
