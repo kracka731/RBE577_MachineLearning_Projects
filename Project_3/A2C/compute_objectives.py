@@ -65,7 +65,7 @@ def compute_actor_loss(chosen_log_probs, advantage_batch, grad_bounds=None):
 
     # Second term Gt or At is advantage_batch 
     # Determines how strongly to reinforce the direction taken by policy gradient
-    advantage_batch = normalize_advantage(advantage_batch)
+    # advantage_batch = normalize_advantage(advantage_batch)
     grad = torch.mean(-chosen_log_probs * advantage_batch)
 
     # grad = torch.clamp(grad, min=-grad_bounds, max=grad_bounds)

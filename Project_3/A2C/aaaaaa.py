@@ -107,6 +107,8 @@ def train_actor_critic(config_path=None, plot=True):
     reward_history = np.zeros(config["num_episodes"])/10
 
     for i_episode in range(config["num_episodes"]):
+        if i_episode % 25 == 0:
+            print(f"epidode {i_episode}")
         raw_state = reset_env(env, seed=config["random_seed"] if i_episode == 0 else None)
         obs_normalizer.update(raw_state)
         state = torch.tensor(normalize_observation(raw_state, obs_normalizer), dtype=torch.float32)
