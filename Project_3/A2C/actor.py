@@ -61,8 +61,7 @@ class Actor(nn.Module):
         #TODO Fill your code
         # Forward pass
         with torch.no_grad(): # In order to not include the gradient function to save time and computation
-            # action_logits = self(states) 
-            action_logits = self.forward(states)
+            action_logits = self(states) 
         
         # A logit is a bijective function that maps probabilities ([0,1])
         # Can be articulated is pi_theta(a_i, s_i) in math
@@ -128,14 +127,13 @@ class Actor(nn.Module):
         # Run the policy on a single state - Forward pass
         with torch.no_grad(): # In order to not include the gradient function to save time and computation
             logits = self(state) 
-            logits = self.forward(state)
 
             # Return a greedy action when deterministic evaluation is requested
             if deterministic:
                 # print("running deterministic")
                 # Choose the best action
                 # consider logits and choose one with the highest probability to be chosen action
-                action = torch.argmax(logits)
+                # action = torch.argmax(logits)
                 dist = Categorical(logits)
                 
                 action = dist.sample()
