@@ -61,11 +61,9 @@ class Actor(nn.Module):
         #TODO Fill your code
         # Forward pass
         with torch.no_grad(): # In order to not include the gradient function to save time and computation
-            action_logits = self(states) 
-            # action_logits = self.forward(states)
-        # print(f"action_logits: {action_logits}")
-        # print(f"action logits: {action_logits}")
-
+            # action_logits = self(states) 
+            action_logits = self.forward(states)
+        
         # A logit is a bijective function that maps probabilities ([0,1])
         # Can be articulated is pi_theta(a_i, s_i) in math
         # Also refered to as action logits
@@ -75,15 +73,18 @@ class Actor(nn.Module):
         # This portion uses what the model has learned to predict the likely best next action
         # Specifically considering the current state 
         # action_probs = self(state)
+        dist = Categorical(action_logits)
 
         # TODO: Convert the raw outputs into log-probabilities
         # Hint: The loss is written in terms of log probabilities rather than plain probabilities.
         # The log probablities of all possible actions
         # log pi_theta(a|s)
-        log_action_probs = torch.log1p(action_logits)
+        # log_action_probs = torch.log1p(action_logits)
+        log_action_probs = dist.log_prob(actions.transpose(0, 1)).flatten()
 
         # 
         action_oh = torch.zeros([len(actions),4])
+        chosen_log_prob = torch.zeros([len(actions),4])
         # [row][column]
         
 
@@ -93,6 +94,7 @@ class Actor(nn.Module):
         n=0
         for action in actions:
             action_oh[n][action] = torch.tensor(1.) # assuming action is an integer from 0-3
+            chosen_log_prob[n] = log_action_probs[n] * action_oh[n]
             n+=1
 
         # print(f"action_oh = {action_oh}")
@@ -103,47 +105,48 @@ class Actor(nn.Module):
         # Extract the log-probability of each chosen action
         # Hint: Use the selected-action mask together with the full table of log probabilities.
         # chosen_log_probs = torch.math.log(torch.reduce_sum(action_probs * action_oh))  # Replace with your implementation
-        chosen_log_prob = -torch.sum(log_action_probs * action_oh, 1)
+        # print(f"lap {log_action_probs.size()}, ao {action_oh.size()}")
+        # chosen_log_prob = torch.matmul(log_action_probs, action_oh)
+        # chosen_log_prob = -torch.sum(log_action_probs * action_oh, 1)
         # print(f"in actor chosen_log_prob: {chosen_log_prob}")
 
         # TODO: Compute the entropy of the action distribution
         # Hint: Entropy should be larger when the policy is spread out and smaller when it is confident.
         # An entropy bonus can be added to the actor's objectrage exploration (but not in this implementation?)
-        # entropy = action_logits.mean() # * entropy_coef
-        dist = Categorical(logits=log_action_probs)
-        # print(f"dist: {dist}")
-        # bern = Bernoulli(action_logits)
-        # print(f"bern: {bern}")
-        entropy = dist.entropy().mean()
-        # entropy = torch.entropy(action_logits)
-        # print(f"chosen_log_prob: {chosen_log_prob}")
+        entropy = dist.entropy()
+
+        # print(f"logits:    {action_logits[0]}")
+        # print(f"la probs:  {log_action_probs[0]}")
+        # print(f"action oh: {action_oh[0]}")    
+        # print(f"log probs: {chosen_log_prob[0]}")
+        # print(f"categoric: {dist.probs[0]}")
+        # print(f"entropy:   {entropy[0]}")
 
         return chosen_log_prob, entropy
     
     def get_action(self, state, deterministic):
         # Run the policy on a single state - Forward pass
-        # print(f"gat_action state: {state}")
         with torch.no_grad(): # In order to not include the gradient function to save time and computation
             logits = self(state) 
-            # print(f"get_action logits: {logits}")
+            logits = self.forward(state)
 
             # Return a greedy action when deterministic evaluation is requested
             if deterministic:
                 # print("running deterministic")
                 # Choose the best action
                 # consider logits and choose one with the highest probability to be chosen action
-                dist = Categorical(logits=logits)
-                # print(f"dist: {dist}")
-                action = dist.sample()
+                action = torch.argmax(logits)
+
+                # print(f"LOGITS:    {logits}")
+                # print(f"ACTION:    {action}")
 
             else: # stochastic, randomly choose an action 
-                # if entropy > random.randrange(0)
-                action = random.randrange(0, 4, 1) # choose a random action [0,1,2,3]
+                dist = Categorical(logits)
+                
+                action = dist.sample()
 
         # categorical function can give categorical distribution from softmax 
-        # action = dist.sample()
-        # log_prob = dist.log_prob(action)
-
+        
         # Return one action
         return int(action)  # Replace with your implementation
 

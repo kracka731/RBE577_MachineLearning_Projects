@@ -131,7 +131,7 @@ def test_actor(actor, env, obs_normalizer, i_episode):
 
             print(f"actor_loss for episode {i_episode} in testing: {actor_loss}")
             print(f"Total reward: {np.sum(episode_rewards)}")
-            print(f"Entropy: {entropy}")
+            print(f"Entropy: {entropy.mean()}")
     
     reward_history = np.sum(episode_rewards)
 
