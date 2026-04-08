@@ -40,6 +40,6 @@ def compute_actor_loss(log_prob_batch, advantage_batch, entropy_batch, entropy_c
 def compute_critic_loss(return_batch, value_batch):
     """Mean-squared value regression loss."""
     # TODO: Compute the critic regression loss
-    advantage = compute_advantage(return_batch, value_batch)
-    return torch.mean(advantage**2)  # Replace with your implementation
+    advantage = compute_advantage(return_batch, value_batch) # for MSE, return is input, value is target
+    return torch.mean(torch.pow(advantage, 2))  # Replace with your implementation
 

@@ -23,7 +23,7 @@ def build_global_model(config, device):
     model = ActorCritic(state_dim, action_dim, net["shared_layers"], net["critic_hidden_layers"], net["actor_hidden_layers"], init_type=net["init_type"])  # Replace with your implementation
 
     # TODO: Move the global model parameters into shared memory
-    model.to(device)  # Replace with your implementation
+    model.share_memory()  # Replace with your implementation
 
     return model
 
@@ -57,7 +57,7 @@ def train_a3c():
 
     # interval statistics for logging.
     global_net = build_global_model(config, device)  # Replace with your implementation
-    optimizer = None  # Replace with your implementation
+    optimizer = SharedAdam(global_net.parameters(), lr=config['hyperparameters']['lr'])  # Replace with your implementation
     global_ep = None  # Replace with your implementation
     lock = None  # Replace with your implementation
     manager = None  # Replace with your implementation
