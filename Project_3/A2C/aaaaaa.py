@@ -71,6 +71,74 @@ def run_lunar_lander(actor=None, video_filename="lunar_lander_example.mp4", conf
     video_path = os.path.join(VIDEOS_DIR, video_filename)
     imageio.mimsave(video_path, frames, fps=20, macro_block_size=1)
 
+def test_actor(actor, env, obs_normalizer, i_episode):
+    # Test loss every 10 episodes
+    raw_state = reset_env(env, seed=config["random_seed"] if i_episode == 0 else None)
+    obs_normalizer.update(raw_state)
+    state = torch.tensor(normalize_observation(raw_state, obs_normalizer), dtype=torch.float32)
+    episode_states = []
+    episode_actions = []
+    episode_rewards = []
+    episode_terminated = False
+    episode_truncated = False
+    state_batch: torch.tensor = state
+    action_batch = torch.tensor([0])
+    if i_episode % 10 == 0:
+        with torch.no_grad():
+            for _ in range(config["max_ep_steps"]):
+                if episode_terminated or episode_truncated:
+                    break
+                # Interact with the environment for one step and record the transition
+                # Hint: This block should choose an action from the actor, step the environment,
+                # update the observation statistics, and save the information needed later
+                # to build returns and losses.
+
+                # Take action and update env
+                normalized_state = normalize_observation(state, obs_normalizer)
+                state_tensor = torch.tensor(normalized_state, dtype=torch.float32)
+                # print("getting action")
+                action = actor.get_action(state_tensor, True)
+                # print(f"action {action} acquired")
+                # action = actor.get_action(state, deterministic=True)
+                next_state, reward, episode_terminated, episode_truncated, info = step_env(env, action)
+                obs_normalizer.update(next_state)
+                next_state = torch.tensor(normalize_observation(next_state, obs_normalizer), dtype=torch.float32)
+                
+                # Store data
+                episode_rewards.append(reward)
+                episode_states.append(next_state)
+                episode_actions.append(action)
+                state_batch = torch.vstack([state_batch, next_state])
+                action_batch = torch.vstack([action_batch, torch.tensor(action)])
+
+                state = next_state
+            # Convert the collected episode data into batched tensors
+            # print(state_batch)
+            state_batch = state_batch[1:]
+            action_batch = action_batch[1:]
+            # reward_history[i_episode] = np.sum(episode_rewards) # not discounted sum
+
+            # assert len(state_batch) == len(action_batch), f"Values should be equal. |state_batch_len = {len(state_batch)}| |action_batch_len = {len(action_batch)}|"
+            # print(f"Episode rewards: {episode_rewards}")
+            # Hint: Use the stored rewards together with gamma 
+            return_batch = compute_discounted_returns(episode_rewards, gamma=config["gamma"]) 
+
+            # Evaluate the log-probabilities of the actions that were actually taken
+            chosen_log_probs, entropy = actor.evaluate_actions(state_batch, action_batch)
+            # print(f"Training episode {i_episode}/{config['num_episodes']}") # Current Entropy = {entropy}")
+
+            # Policy gradient update
+            actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
+            actor_loss.requires_grad = True
+
+            print(f"actor_loss for episode {i_episode} in testing: {actor_loss}")
+            print(f"Total reward: {np.sum(episode_rewards)}")
+            print(f"Entropy: {entropy.mean()}")
+    
+    reward_history = np.sum(episode_rewards)
+
+    return reward_history
+
 
 def train_actor_critic(config_path=None, plot=True):
     config = load_config(config_path) if config_path else load_config()
@@ -219,7 +287,7 @@ def train_actor_critic(config_path=None, plot=True):
 
             # print(f"critic_loss: {critic_loss}")
 
-
+        # reward_history[i_episode] = test_actor(actor, env, obs_normalizer, i_episode)
     print(f"avg reward: {reward_history.mean()}")
 
                             

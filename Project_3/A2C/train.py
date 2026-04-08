@@ -232,21 +232,19 @@ def train_actor_critic(config_path=None, plot=True):
         chosen_log_probs, entropy = actor.evaluate_actions(state_batch, action_batch)
         # print(f"Training episode {i_episode}/{config['num_episodes']}") # Current Entropy = {entropy}")
 
-        # if i_episode % 10 == 0:
-            # print(f"Stochastic Entropy: {entropy}")
-
-
-        # print(f"actor_loss: {actor_loss}")
-
-        # optional 
-        # actor_loss -=  config['value_loss_coef'] * entropy
+        # probs = actor(state)
+        # m = Categorical(probs)
+        # action = m.sample()
+        # next_state, reward = env.step(action)
+        # loss = -m.log_prob(action) * reward
+        # loss.backward()
 
         if use_reinforce: #this is the REINFORCE case where we don't use a critic, so the advantage is just the return
             # print("Using REINFORCE")
             # Policy-gradient update for REINFORCE
             # Policy gradient update
             actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
-            actor_loss.requires_grad = True
+            
             # Backpropagation & optimization
             # Clear any stale actor gradients before backpropagation
             # Hint: Optimizers in PyTorch accumulate gradients unless you reset them.
