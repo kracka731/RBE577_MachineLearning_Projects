@@ -163,9 +163,7 @@ def train_actor_critic(config_path=None, plot=True):
         return_batch = compute_discounted_returns(episode_rewards, gamma=config["gamma"]) 
 
         # Evaluate the log-probabilities of the actions that were actually taken
-        action_logits = actor(state_batch)
-        dist = Categorical(action_logits)
-        log_action_probs = dist.log_prob(action_batch.transpose(0, 1)).flatten()
+        chosen_log_prob, entropy = actor.evaluate_actions(state_batch, action_batch)
 
 
         # probs = actor(state)
@@ -181,8 +179,8 @@ def train_actor_critic(config_path=None, plot=True):
             # print("Using REINFORCE")
             # Policy-gradient update for REINFORCE
             # Policy gradient update
-            actor_loss = torch.mean(-log_action_probs * torch.tensor(episode_rewards))
-            
+            actor_loss = compute_actor_loss(chosen_log_prob, return_batch, config['grad_norm_clip'])
+
             # Backpropagation & optimization
             # Clear any stale actor gradients before backpropagation
             # Hint: Optimizers in PyTorch accumulate gradients unless you reset them.

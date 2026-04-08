@@ -58,10 +58,9 @@ class Actor(nn.Module):
         # N = len(states) # Number of sampled experiences
         # entropy_coef = 1
 
-        #TODO Fill your code
         # Forward pass
-        with torch.no_grad(): # In order to not include the gradient function to save time and computation
-            action_logits = self(states) 
+        # with torch.no_grad(): # In order to not include the gradient function to save time and computation
+        action_logits = self(states) 
         
         # A logit is a bijective function that maps probabilities ([0,1])
         # Can be articulated is pi_theta(a_i, s_i) in math
@@ -71,17 +70,17 @@ class Actor(nn.Module):
         # Hint: You will need these when measuring how uncertain the policy is.
         # This portion uses what the model has learned to predict the likely best next action
         # Specifically considering the current state 
-        # action_probs = self(state)
         dist = Categorical(action_logits)
 
         # TODO: Convert the raw outputs into log-probabilities
         # Hint: The loss is written in terms of log probabilities rather than plain probabilities.
         # The log probablities of all possible actions
         # log pi_theta(a|s)
-        # log_action_probs = torch.log1p(action_logits)
         log_action_probs = dist.log_prob(actions.transpose(0, 1)).flatten()
 
-        # 
+        # action_oh stands for action_one-hot
+        # if using action_oh: 
+        """
         action_oh = torch.zeros([len(actions),4])
         chosen_log_prob = torch.zeros([len(actions),4])
         # [row][column]
@@ -95,24 +94,16 @@ class Actor(nn.Module):
             action_oh[n][action] = torch.tensor(1.) # assuming action is an integer from 0-3
             chosen_log_prob[n] = log_action_probs[n] * action_oh[n]
             n+=1
-
-        # print(f"action_oh = {action_oh}")
-
-
-        # action_oh stands for action_one-hot
+        """
 
         # Extract the log-probability of each chosen action
         # Hint: Use the selected-action mask together with the full table of log probabilities.
-        # chosen_log_probs = torch.math.log(torch.reduce_sum(action_probs * action_oh))  # Replace with your implementation
-        # print(f"lap {log_action_probs.size()}, ao {action_oh.size()}")
-        # chosen_log_prob = torch.matmul(log_action_probs, action_oh)
-        # chosen_log_prob = -torch.sum(log_action_probs * action_oh, 1)
-        # print(f"in actor chosen_log_prob: {chosen_log_prob}")
+        chosen_log_prob = log_action_probs
 
         # TODO: Compute the entropy of the action distribution
         # Hint: Entropy should be larger when the policy is spread out and smaller when it is confident.
         # An entropy bonus can be added to the actor's objectrage exploration (but not in this implementation?)
-        entropy = dist.entropy()
+        entropy = dist.entropy().mean()
 
         # print(f"logits:    {action_logits[0]}")
         # print(f"la probs:  {log_action_probs[0]}")
