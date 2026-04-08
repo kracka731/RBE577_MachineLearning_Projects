@@ -8,9 +8,9 @@
   "grad_norm_clip": 2.5,
   "actor_lr": 0.0002,
   "critic_lr": 0.0003,
-  "gamma": 0.95,
+  "gamma": 0.90,
   "hidden_dim": 256,
-  "num_episodes": 2000,
+  "num_episodes": 5000,
   "max_ep_steps": 1000,
   "reward_ma_window": 10,
   "random_seed": 42
