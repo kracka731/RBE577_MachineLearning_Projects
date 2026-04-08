@@ -43,7 +43,8 @@ def compute_advantage(return_batch, value_batch):
     # Compute the advantage estimate
     # Hint: This quantity should capture how much better or worse the observed return
     # was compared with the critic's prediction.
-    return normalize_advantage(return_batch - value_batch)  
+    # return normalize_advantage(return_batch - value_batch)  
+    return return_batch - value_batch 
 
 def normalize_advantage(advantage_batch):
     if advantage_batch.numel() <= 1:
@@ -65,14 +66,14 @@ def compute_actor_loss(chosen_log_probs, advantage_batch, grad_bounds=None):
 
     # Second term Gt or At is advantage_batch 
     # Determines how strongly to reinforce the direction taken by policy gradient
-    advantage_batch = normalize_advantage(advantage_batch)
+    # advantage_batch = normalize_advantage(advantage_batch)
 
-    grad = torch.mean(chosen_log_probs * advantage_batch)
-    grad = torch.clamp(grad, min=-grad_bounds, max=grad_bounds)
-    return grad
+    # grad = -torch.mean(chosen_log_probs * advantage_batch)
+    # grad = torch.clamp(grad, min=-grad_bounds, max=grad_bounds)
+    # return grad
 
-    # actor_loss = -(chosen_log_probs * advantage_batch.detach()).mean()
-    # return actor_loss
+    actor_loss = -(chosen_log_probs * advantage_batch.detach()).mean()
+    return actor_loss
 
 def compute_critic_loss(return_batch, value_batch, value_loss_coeff):
     """Compute the MSE of the advantage"""
