@@ -1,10 +1,12 @@
 import torch
+import numpy as np
 
 
 def compute_discounted_returns(rewards, gamma, bootstrap_value=None):
     """Compute the discounted return at every timestep """
     # Hint: Work backward from the end of the episode or rollout.
     # Gamma: discount factor from (0-1]
+    discounted_returns_list = []
 
     discounted_returns = torch.tensor([0]) # this is the list of all returns
     # Called return instead of reward due to the causality assumption
@@ -21,8 +23,11 @@ def compute_discounted_returns(rewards, gamma, bootstrap_value=None):
     for reward in reversed(rewards):
         # print(f"rewards: {reward}")
         running_return += gamma**(t) * reward
-        discounted_returns = torch.vstack([discounted_returns, torch.tensor(running_return)])
+        discounted_returns_list.append(running_return)
+        # discounted_returns = torch.vstack([discounted_returns, torch.tensor(running_return)])
         t -= 1
+    
+    discounted_returns = torch.tensor(np.stack(discounted_returns_list))
 
     # Package the per-step returns into a single tensor
     # Hint: The training code expects one tensor containing all timesteps.
