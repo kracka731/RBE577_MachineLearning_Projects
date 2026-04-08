@@ -89,10 +89,9 @@ class Actor(nn.Module):
             # print(f"ACTION:    {action}")
 
         else: # stochastic, randomly choose an action 
-            dist = Categorical(logits)
-            action = int(dist.sample().item())
-            # action = random.randrange(0, 4, 1) # choose a random action [0,1,2,3]
-
+            dist = Categorical(logits=logits)
+            action = int(dist.sample())
+            
         # categorical function can give categorical distribution from softmax 
         
         # Return one action
