@@ -70,7 +70,7 @@ def run_lunar_lander(actor=None, video_filename="lunar_lander_example.mp4", conf
     imageio.mimsave(video_path, frames, fps=20, macro_block_size=1)
 
 def test_actor(actor, critic, env, obs_normalizer, i_episode):
-    # Test loss every 10 episodes
+
     raw_state = reset_env(env, seed=config["random_seed"] if i_episode == 0 else None)
     obs_normalizer.update(raw_state)
     state = torch.tensor(normalize_observation(raw_state, obs_normalizer), dtype=torch.float32)
@@ -83,69 +83,68 @@ def test_actor(actor, critic, env, obs_normalizer, i_episode):
     episode_rewards = []
     episode_terminated = False
     episode_truncated = False
-    if i_episode % 10 == 0:
-        with torch.no_grad():
-            for iteration in range(config["max_ep_steps"]):
-                if episode_terminated or episode_truncated:
-                    break
-                # Interact with the environment for one step and record the transition
-                # Hint: This block should choose an action from the actor, step the environment,
-                # update the observation statistics, and save the information needed later
-                # to build returns and losses.
+    with torch.no_grad():
+        for iteration in range(config["max_ep_steps"]):
+            if episode_terminated or episode_truncated:
+                break
+            # Interact with the environment for one step and record the transition
+            # Hint: This block should choose an action from the actor, step the environment,
+            # update the observation statistics, and save the information needed later
+            # to build returns and losses.
 
-                # Take action and update env
-                action = actor.get_action(state, False)
-                next_state, reward, episode_terminated, episode_truncated, info = step_env(env, action)
+            # Take action and update env
+            action = actor.get_action(state, False)
+            next_state, reward, episode_terminated, episode_truncated, info = step_env(env, action)
 
-                episode_rewards.append(reward)
-                episode_actions.append(action)
-                episode_states.append(state) # already a tensor
-                episode_next_states.append(next_state)
-                episode_ends.append(int(episode_terminated | episode_truncated))
+            episode_rewards.append(reward)
+            episode_actions.append(action)
+            episode_states.append(state) # already a tensor
+            episode_next_states.append(next_state)
+            episode_ends.append(int(episode_terminated | episode_truncated))
 
-                obs_normalizer.update(next_state)
-                next_state = torch.tensor(normalize_observation(next_state, obs_normalizer), dtype=torch.float32)
-                episode_reward += reward
-                
-                state = next_state
-
-            state_batch = torch.stack(episode_states)
-            next_state_batch = torch.tensor(np.stack(episode_next_states))
-            action_batch = torch.tensor(np.stack(episode_actions))
-            # assert len(state_batch) == len(action_batch), f"Values should be equal. |state_batch_len = {len(state_batch)}| |action_batch_len = {len(action_batch)}|"
-            # print(f"Episode rewards: {episode_rewards}")
-            # Hint: Use the stored rewards together with gamma 
-            return_batch = compute_discounted_returns(episode_rewards, gamma=config["gamma"]) 
-
-            # Evaluate the log-probabilities of the actions that were actually taken
-            chosen_log_probs, entropy = actor.evaluate_actions(state_batch, action_batch)
-            # print(f"Training episode {i_episode}/{config['num_episodes']}") # Current Entropy = {entropy}")
-
-            # Policy gradient update
+            obs_normalizer.update(next_state)
+            next_state = torch.tensor(normalize_observation(next_state, obs_normalizer), dtype=torch.float32)
+            episode_reward += reward
             
-            # actor_loss.requires_grad = True
-            print("-----") # divider
-            if config["algorithm"].lower() == "reinforce":
-                actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
-                print(f"episode {i_episode} testing actor_loss: {actor_loss}")
-            else: # a2c
-                with torch.no_grad():
-                    value_batch = critic(next_state_batch)
-            
-                next_target = torch.tensor(episode_rewards) + (1 - torch.tensor(episode_ends)) * config["gamma"] * value_batch
+            state = next_state
 
-                critic_loss = compute_critic_loss(next_target, value_batch, config['value_loss_coef'])
-                advantages = compute_advantage(next_target, value_batch)
+        state_batch = torch.stack(episode_states)
+        next_state_batch = torch.tensor(np.stack(episode_next_states))
+        action_batch = torch.tensor(np.stack(episode_actions))
+        # assert len(state_batch) == len(action_batch), f"Values should be equal. |state_batch_len = {len(state_batch)}| |action_batch_len = {len(action_batch)}|"
+        # print(f"Episode rewards: {episode_rewards}")
+        # Hint: Use the stored rewards together with gamma 
+        return_batch = compute_discounted_returns(episode_rewards, gamma=config["gamma"]) 
 
-                actor_loss = compute_actor_loss(chosen_log_probs, advantages, config['grad_norm_clip'])
-                print(f"episode {i_episode} testing actor_loss: {actor_loss}")
-                print(f"episode {i_episode} testing critic_loss: {critic_loss}")
+        # Evaluate the log-probabilities of the actions that were actually taken
+        chosen_log_probs, entropy = actor.evaluate_actions(state_batch, action_batch)
+        # print(f"Training episode {i_episode}/{config['num_episodes']}") # Current Entropy = {entropy}")
+
+        # Policy gradient update
+        
+        # actor_loss.requires_grad = True
+        print("-----") # divider
+        if config["algorithm"].lower() == "reinforce":
+            actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
+            print(f"episode {i_episode} testing actor_loss: {actor_loss}")
+        else: # a2c
+            with torch.no_grad():
+                value_batch = critic(next_state_batch)
+        
+            next_target = torch.tensor(episode_rewards) + (1 - torch.tensor(episode_ends)) * config["gamma"] * value_batch
+
+            critic_loss = compute_critic_loss(next_target, value_batch, config['value_loss_coef'])
+            advantages = compute_advantage(next_target, value_batch)
+
+            actor_loss = compute_actor_loss(chosen_log_probs, advantages, config['grad_norm_clip'])
+            print(f"episode {i_episode} testing actor_loss: {actor_loss}")
+            print(f"episode {i_episode} testing critic_loss: {critic_loss}")
 
 
-            print(f"Total reward: {np.sum(episode_rewards)}")
-            print(f"Entropy: {entropy.mean()}")
-            print(f"steps in trajectory: {len(episode_rewards)}")
-    
+        print(f"Total reward: {np.sum(episode_rewards)}")
+        print(f"Entropy: {entropy.mean()}")
+        print(f"steps in trajectory: {len(episode_rewards)}")
+
     reward_history = np.sum(episode_rewards)
 
     return reward_history
@@ -290,8 +289,11 @@ def train_actor_critic(config_path=None, plot=True):
                 critic_loss.backward(retain_graph=True)
             actor_optim.step()
             critic_optim.step()
-
-        reward_history[i_episode] = test_actor(actor, critic, env, obs_normalizer, i_episode)
+        
+        # Test loss every 10 episodes
+        if i_episode % 10 == 0:
+            reward_history[i_episode] = test_actor(actor, critic, env, obs_normalizer, i_episode)
+            
     print(f"avg reward: {reward_history.mean()}")
 
                             
