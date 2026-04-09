@@ -131,12 +131,12 @@ def train_actor_critic(config_path=None, plot=True):
         #absolutely not object oriented programming
         state_batch, next_state_batch, action_batch, return_batch, chosen_log_probs, entropy, episode_rewards, episode_terminations = run_episode(actor, env, obs_normalizer, i_episode, False)
 
-        actor_loss, critic_loss = compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2c, chosen_log_probs, return_batch, state_batch, next_state_batch, episode_rewards, episode_terminations, entropy, False)
+        actor_loss, critic_loss = compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2c, chosen_log_probs, return_batch, state_batch, next_state_batch, episode_terminations, entropy, config, False)
 
         # Test loss every 10 episodes
         if i_episode % 10 == 0:
             state_batch, next_state_batch, action_batch, return_batch, chosen_log_probs, entropy, episode_rewards, episode_terminations = run_episode(actor, env, obs_normalizer, i_episode, True)
-            actor_loss, critic_loss = compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2c, chosen_log_probs, return_batch, state_batch, next_state_batch, episode_rewards, episode_terminations, entropy, True)
+            actor_loss, critic_loss = compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2c, chosen_log_probs, return_batch, state_batch, next_state_batch, episode_terminations, entropy, config, True)
             # actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
             # actor_loss -= config.get('entropy_coef', 0) * entropy.mean()
             # critic_loss = None
@@ -183,7 +183,7 @@ def train_actor_critic(config_path=None, plot=True):
     env.close()
     return actor
 
-def compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2c, chosen_log_probs, return_batch, state_batch, next_state_batch, episode_rewards, episode_terminations, entropy, test=False):
+def compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2c, chosen_log_probs, return_batch, state_batch, next_state_batch, episode_terminations, entropy, config, test=False):
     
     if use_reinforce: #this is the REINFORCE case where we don't use a critic, so the advantage is just the return
         # print("Using REINFORCE")
@@ -214,22 +214,26 @@ def compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2
         # value_batch = critic(state_batch) 
         if test:   
             with torch.no_grad():
-                value_batch = critic(state_batch)
-                next_value_batch = critic(next_state_batch) # value of all NEXT states
+                value_batch = critic(state_batch).squeeze(-1)
+                next_value_batch = critic(next_state_batch).squeeze(-1) # value of all NEXT states
         else:
-            value_batch = critic(state_batch)
-            next_value_batch = critic(next_state_batch) # value of all NEXT states
+            value_batch = critic(state_batch).squeeze(-1)
+            next_value_batch = critic(next_state_batch).squeeze(-1) # value of all NEXT states
 
-        next_target = torch.tensor(episode_rewards) + (1 - torch.tensor(episode_terminations)) * config["gamma"] * next_value_batch
+        # next_target = return_batch + (1 - episode_terminations) * config["gamma"] * next_value_batch
+        # advantages = compute_advantage(return_batch, next_value_batch)
+        advantages = compute_advantage_gae(return_batch, value_batch, next_value_batch, episode_terminations, config)
 
-        critic_loss = compute_critic_loss(next_target, value_batch, config['value_loss_coef'])
-        print(f"critic_loss: {critic_loss}")
-        # if i_episode % 5 == 0:
-        #     print(f"episode {i_episode} critic_loss: {critic_loss}")
-        advantages = compute_advantage(next_target, value_batch)
+        next_targets = (advantages + value_batch).float()
         
         actor_loss = compute_actor_loss(chosen_log_probs, advantages, config['grad_norm_clip'])
         
+        critic_loss = compute_critic_loss(next_targets, value_batch, config['value_loss_coef'])
+        # print(f"critic_loss: {critic_loss}")
+        # if i_episode % 5 == 0:
+        #     print(f"episode {i_episode} critic_loss: {critic_loss}")
+        
+        # print(f"type: {critic_loss.type()}")
         if not test:
             # Perform backprop
             actor_optim.zero_grad()
@@ -237,7 +241,7 @@ def compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2
 
             # with torch.no_grad(): 
             actor_loss.backward()
-            critic_loss.backward()
+            (critic_loss*config['value_loss_coef']).backward()
             actor_optim.step()
             critic_optim.step()
 
