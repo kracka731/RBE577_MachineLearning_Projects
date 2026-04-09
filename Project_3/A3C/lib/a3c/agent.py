@@ -6,7 +6,8 @@ import torch.nn.functional as F
 from torch.distributions import Categorical
 
 from helpers.metrics import MetricsTracker
-from helpers.utils import get_network_input_shape, get_screen, make_env, setup_camera
+from helpers.utils import (get_network_input_shape, get_screen, 
+                           make_env, setup_camera, get_kuka_action_dim)
 from lib.a3c.model import ActorCritic
 from lib.a3c.objectives import (
     compute_actor_loss,
@@ -44,7 +45,14 @@ def worker_process(
     env = make_env(config, worker_id)
 
     # TODO: Create the worker's local actor-critic network
-    local_net = ActorCritic(env, action_size, _)  # Replace with your implementation
+    state_dim = get_network_input_shape(config)
+    action_dim = get_kuka_action_dim(config)
+    net = config['network']
+
+    local_net = ActorCritic(state_dim, action_dim, net["shared_layers"], 
+                            net["critic_hidden_layers"], net["actor_hidden_layers"], 
+                            init_type=net["init_type"])
+    local_net.to(device)
 
     # TODO: Synchronize the local worker network with the shared global network
     local_net.load_state_dict(global_net.state_dict())  # Replace with your implementation
@@ -78,10 +86,10 @@ def worker_process(
         state = get_screen(env, device, config)
         #FIXME: probably missing things here
 
-        log_probs = []
+        log_probs = torch.empty((1, action_dim)).to(device)
         values = []
         rewards = []
-        entropies = []
+        entropies = torch.empty((1, action_dim)).to(device)
         done = False
 
         for _ in range(t_max):
@@ -89,28 +97,24 @@ def worker_process(
             # Hint: The model returns the actor output and critic value; then use the
             # model helper to turn the actor output into a distribution.
             action_loc, value = local_net(state)  # Replace with your implementation
-            # FIXME my original guess was dist = Categorical(action_loc). consider?
             dist = local_net.get_action_distribution(action_loc)  # Replace with your implementation
 
             # TODO: Sample an action and compute the policy terms needed later
-
-            action = dist.sample()  # Replace with your implementation
-            # FIXME is action.item() needed? 
+            action = dist.rsample().flatten()  
             log_prob = dist.log_prob(action)  # Replace with your implementation
-            entropy = dist.entropy()  # Replace with your implementation
+            entropy = -log_prob  # FIXME slightly inaccurate since dist.entropy doesnt work
             action_np = None  # Replace with your implementation
 
             # TODO: Step the environment and preprocess the next observation
-
             observation, reward, done, debug = env.step(action)
             next_state = get_screen(env, device, config)  # Replace with your implementation
 
             # TODO: Save the rollout information needed for the loss computation
             # Hint: Store the policy terms, value estimates, and rewards one step at a time.
-            log_probs.append(log_prob)
+            log_probs = torch.vstack([log_probs, log_prob])
             values.append(value)
             rewards.append(reward)
-            entropies.append(entropy)
+            entropies = torch.vstack([entropies, entropy])
 
             episode_reward += reward
             episode_steps += 1
@@ -126,18 +130,19 @@ def worker_process(
             if not done:
                 bootstrap_value = 0
             else:
-                bootstrap_value = reward + gamma * value * (1-done)
+                bootstrap_value = float(reward + gamma * value * (1-done))
                 # FIXME additional computations
+            values.append(value + bootstrap_value)
 
         # TODO: Convert the rollout into batched tensors and objectives
-        return_batch = compute_bootstrapped_returns(torch.tensor(rewards), gamma, bootstrap_value) 
-        log_prob_batch = torch.tensor(log_probs) 
+        return_batch = compute_bootstrapped_returns(rewards, gamma, bootstrap_value) 
+        log_prob_batch = log_probs
         value_batch = torch.tensor(values).squeeze()
-        entropy_batch = torch.tensor(entropies) 
+        entropy_batch = entropies 
         
-        advantage_batch = compute_advantage(return_batch, value_batch.detach()) 
-        actor_loss = compute_actor_loss(log_prob_batch, advantage_batch, entropy_batch, entropy_coef) 
-        critic_loss = compute_critic_loss(return_batch, value_batch) 
+        advantage_batch = compute_advantage(return_batch, value_batch.detach()).to(device) 
+        actor_loss = compute_actor_loss(log_prob_batch, advantage_batch.detach(), entropy_batch, entropy_coef) 
+        critic_loss = compute_critic_loss(return_batch.detach(), value_batch) 
         total_loss = actor_loss + value_loss_coef*critic_loss  
 
         # FIXME: i didnt write these next 4 lines but what are they???
@@ -166,7 +171,8 @@ def worker_process(
             metrics.add_episode_length(episode_steps)
 
             # TODO: Update the shared episode counter and logging stats
-            global_ep.value += 1
+            with global_ep.get_lock(): # FIXME with lock vs with global_ep.get_lock()???
+                global_ep.value = global_ep.value + 1
             # FIXME ????  
 
             env.reset()

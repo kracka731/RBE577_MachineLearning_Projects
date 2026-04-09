@@ -10,7 +10,6 @@ def compute_bootstrapped_returns(rewards, gamma, bootstrap_value):
     returns = []
 
     # TODO: Accumulate discounted returns backward through the rollout
-    # FIXME: what datatype is bootstrap_value?
     rewards.append(bootstrap_value)
     t = len(rewards) - 1
     for reward in reversed(rewards):
@@ -20,6 +19,7 @@ def compute_bootstrapped_returns(rewards, gamma, bootstrap_value):
 
     # TODO: Package the per-timestep returns into one tensor
     returns = torch.tensor(returns)
+    returns = torch.flip(returns, (0,))
     return returns  # Replace with your implementation
 
 def compute_advantage(return_batch, value_batch):
@@ -31,11 +31,11 @@ def compute_advantage(return_batch, value_batch):
 def compute_actor_loss(log_prob_batch, advantage_batch, entropy_batch, entropy_coef):
     """Policy loss with an entropy bonus for exploration."""
     # TODO: Compute the policy-gradient term for the actor
-    policy_loss = (log_prob_batch * advantage_batch.detach()).mean()  # Replace with your implementation
-    entropy_bonus = entropy_batch * entropy_coef  # Replace with your implementation
-    loss = policy_loss + entropy_bonus
+    policy_loss = log_prob_batch * advantage_batch.reshape((len(advantage_batch), 1))
+    entropy_bonus = entropy_coef * entropy_batch   
+    loss = -policy_loss + entropy_bonus
     # FIXME: put -loss ? though that would be for minimizing reward ?
-    return loss  # Replace with your implementation
+    return loss.mean()  # Replace with your implementation
 
 def compute_critic_loss(return_batch, value_batch):
     """Mean-squared value regression loss."""

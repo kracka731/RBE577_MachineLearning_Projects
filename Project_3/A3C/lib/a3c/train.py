@@ -2,6 +2,7 @@ import os
 
 import torch
 import torch.multiprocessing as mp
+import torch.optim as optim
 
 from helpers.config import load_config
 from helpers.logger import A3CLogger
@@ -20,9 +21,12 @@ def build_global_model(config, device):
 
     # Hint: The global model should use the same architecture as each worker's
     # local model, but this instance must also be prepared for parameter sharing.
-    model = ActorCritic(state_dim, action_dim, net["shared_layers"], net["critic_hidden_layers"], net["actor_hidden_layers"], init_type=net["init_type"])  # Replace with your implementation
+    model = ActorCritic(state_dim, action_dim, 
+                        net["shared_layers"], net["critic_hidden_layers"], 
+                        net["actor_hidden_layers"], init_type=net["init_type"]) 
 
     # TODO: Move the global model parameters into shared memory
+    model.to(device)
     model.share_memory()  # Replace with your implementation
 
     return model
@@ -51,17 +55,19 @@ def train_a3c():
 
     # TODO: Set up PyTorch multiprocessing before workers are launched
     # Hint: Use the start method expected by the shared-memory A3C setup.
-    pass  # Replace with your implementation
+    mp.set_start_method('spawn', force=True)
 
     # TODO: Create the shared training objects used by all workers
 
     # interval statistics for logging.
-    global_net = build_global_model(config, device)  # Replace with your implementation
-    optimizer = SharedAdam(global_net.parameters(), lr=config['hyperparameters']['lr'])  # Replace with your implementation
-    global_ep = None  # Replace with your implementation
-    lock = None  # Replace with your implementation
-    manager = None  # Replace with your implementation
-    shared_stats = None  # Replace with your implementation
+    global_net = build_global_model(config, device) 
+    # optimizer = SharedAdam(global_net.parameters(), lr=config['hyperparameters']['lr']) 
+    optimizer = optim.Adam(global_net.parameters(), lr=config['hyperparameters']['lr'])  
+
+    global_ep = mp.Value('i', 0)  # shared data. signed integer with init value 0. when using, do lock manually!! 
+    lock = mp.Lock()  # used to ensure only 1 process can access/modify shared resources at a time
+    manager = mp.Manager()  # use for sharing complex data. handles all synchronization, so you don't have to use lock manually
+    shared_stats = None  # FIXME: idk what this is supposed to be used for
 
     os.makedirs(config["logging"]["model_dir"], exist_ok=True)
 
@@ -73,13 +79,25 @@ def train_a3c():
     processes = []
     for worker_id in range(config["hyperparameters"]["num_workers"]):
         # TODO: Launch one worker process for each worker id
-        p = None  # Replace with your implementation
+        args = tuple([worker_id,
+            global_net,
+            optimizer,
+            global_ep,
+            config["hyperparameters"]['max_episodes'],
+            lock,
+            config,
+            device,
+            shared_stats,
+            None])
+        p = mp.Process(target=worker_process, args=args)
 
         # TODO: Start the worker and keep track of the process handle
-        pass  # Replace with your implementation
+        p.start()
+        processes.append(p)
 
     # TODO: Wait for all worker processes to finish
-    pass  # Replace with your implementation
+    for p in processes:
+        p.join()
 
     # TODO: Save the final checkpoint and clean up shared manager resources
     model_path = None  # Replace with your implementation
