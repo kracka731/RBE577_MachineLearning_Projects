@@ -68,6 +68,20 @@ def compute_advantage(return_batch, value_batch):
     return normalize_advantage(advantages)
     # return advantages
 
+def compute_advantage_gae(return_batch, value_batch, next_value_batch, episode_terminations, config):
+    advantages = torch.zeros_like(return_batch)
+    last_advantage = 0.0
+    n_steps = len(return_batch)
+    lambda_gae = 0.9
+
+    for t in reversed(range(n_steps)):
+        mask = 1.0 - episode_terminations[t]
+        delta = return_batch[t] + config['gamma'] * next_value_batch[t] * mask - value_batch[t]
+        advantages[t] = delta + config['gamma'] * lambda_gae * last_advantage * mask
+        last_advantage = advantages[t]
+    
+    return advantages
+
 def normalize_advantage(advantage_batch):
     if advantage_batch.numel() <= 1:
         return advantage_batch
@@ -113,9 +127,14 @@ def compute_actor_loss(chosen_log_probs, reward_batch, grad_bounds=None):
 def compute_critic_loss(return_batch, value_batch, value_loss_coeff):
     """Compute the MSE of the advantage"""
     # Compute the value-function loss
-    advantage = compute_advantage(return_batch, value_batch)
-    print(f"advantage: {advantage}")
+    # advantage = compute_advantage(return_batch, value_batch)
+    # print(f"advantage: {advantage}")
     # advantage = normalize_advantage(advantage)
-    # return torch.mean(advantage**2)*value_loss_coeff 
-    return torch.nn.functional.mse_loss(value_batch, return_batch)
-    # return torch.nn.functional.mse_loss(value_batch, return_batch)
+    # return torch.mean(advantage**2)#*value_loss_coeff 
+    # print(f"size1: {value_batch.type()}")
+    # print(f"size2: {return_batch.detach().type()}")
+
+    critic_loss = torch.nn.functional.mse_loss(value_batch, return_batch.detach())
+    # print(f"size3: {critic_loss.type()}")
+
+    return critic_loss
