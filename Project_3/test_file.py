@@ -18,6 +18,6 @@ import torch
 
 a = torch.randn(4, 4)
 print(a)
-print(torch.sum(a, 0))
-b = torch.arange(4 * 5 * 6).view(4, 5, 6)
-torch.sum(b, (2, 1))
+print(a.view(-1))
+# b = torch.arange(4 * 5 * 6).view(4, 5, 6)
+# torch.sum(b, (2, 1))

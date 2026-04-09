@@ -8,9 +8,10 @@ def compute_discounted_returns(rewards, gamma, bootstrap_value=None):
     # Gamma: discount factor from (0-1]
     discounted_returns_list = []
 
-    discounted_returns = torch.tensor([0]) # this is the list of all returns
+    # discounted_returns = torch.tensor([0]) # this is the list of all returns
+    # discounted_returns = np.zeros_like(rewards, dtype=np.float32)
     # Called return instead of reward due to the causality assumption
-
+    
     # Initialize the running return Gt = the summation of returns for a timestep t
     running_return = 0  
     
@@ -19,19 +20,32 @@ def compute_discounted_returns(rewards, gamma, bootstrap_value=None):
     # Hint: Each earlier timestep should include its own reward plus a discounted
     # contribution from what comes after it.
     # So this means, start from the end (episode termination)   
-    t = len(rewards) - 1
-    for reward in reversed(rewards):
-        # print(f"rewards: {reward}")
-        running_return += gamma**(t) * reward
-        discounted_returns_list.append(running_return)
-        # discounted_returns = torch.vstack([discounted_returns, torch.tensor(running_return)])
-        t -= 1
+    # t = len(rewards) - 1
+    # for reward in reversed(rewards):
+    #     # print(f"rewards: {reward}")
+    #     # running_return += gamma**(t) * reward
+    #     running_return = reward + gamma * running_return
+    #     discounted_returns_list.append(running_return)
+    #     # discounted_returns = torch.vstack([discounted_returns, torch.tensor(running_return)])
+    #     t -= 1
+
+    # for t in reversed(range(len(rewards))):
+    #     running_return = rewards[t] + gamma*running_return
+    #     discounted_returns[t] = running_return
+
+    for r in reversed(rewards):
+        running_return = r + gamma * running_return
+        discounted_returns_list.insert(0, running_return) # prepend to keep order
     
-    discounted_returns = torch.tensor(np.stack(discounted_returns_list))
+    # discounted_returns = torch.tensor(np.stack(discounted_returns_list))
+    discounted_returns = torch.tensor(discounted_returns_list)
+
+    #normalize
+    discounted_returns = (discounted_returns - discounted_returns.mean()) / (discounted_returns.std() + 1e-9)
 
     # Package the per-step returns into a single tensor
     # Hint: The training code expects one tensor containing all timesteps.
-    discounted_returns = torch.flip(discounted_returns, (0,))
+    # discounted_returns = torch.flip(discounted_returns, (0,))
     # discounted_returns = torch.sum(discounted_returns)
     # print(f"Discounted returns: {discounted_returns}")
 
@@ -50,20 +64,23 @@ def compute_advantage(return_batch, value_batch):
     # was compared with the critic's prediction.
     # return normalize_advantage(return_batch - value_batch)  
     advantages = return_batch - value_batch
-    return (advantages - advantages.mean()) / (advantages.std() + 1e-9)
+    # return (advantages - advantages.mean()) / (advantages.std() + 1e-9)
+    return normalize_advantage(advantages)
+    # return advantages
 
 def normalize_advantage(advantage_batch):
     if advantage_batch.numel() <= 1:
         return advantage_batch
-    # return (
-    #     advantage_batch - advantage_batch.mean()
-    # ) / (advantage_batch.std(unbiased=False) + 1e-8)
-    mean_adv = torch.mean(advantage_batch)
-    std_adv = torch.std(advantage_batch) + 1e-8
-    return (advantage_batch - mean_adv) / std_adv
+    return (
+        advantage_batch - advantage_batch.mean()
+    ) / (advantage_batch.std(unbiased=False) + 1e-8)
+    # return (advantage_batch - advantage_batch.mean()) / (advantage_batch.std() + 1e-9)
+    # mean_adv = torch.mean(advantage_batch)
+    # std_adv = torch.std(advantage_batch) + 1e-8
+    # return (advantage_batch - mean_adv) / std_adv
 
 
-def compute_actor_loss(chosen_log_probs, advantage_batch, grad_bounds=None):
+def compute_actor_loss(chosen_log_probs, reward_batch, grad_bounds=None):
     """Compute policy loss through REINFORCE: derivative of the objective 
     function = grad(J(theta))"""
     # First term sum(grad(log(policy)) 
@@ -73,16 +90,32 @@ def compute_actor_loss(chosen_log_probs, advantage_batch, grad_bounds=None):
     # Second term Gt or At is advantage_batch 
     # Determines how strongly to reinforce the direction taken by policy gradient
     # advantage_batch = normalize_advantage(advantage_batch)
-
-    grad = -torch.mean(chosen_log_probs * advantage_batch)
-    # grad = torch.clamp(grad, min=-grad_bounds, max=grad_bounds)
-    return grad
+    
+    # grad = -(chosen_log_probs * reward_batch).sum()
+    # # grad = torch.clamp(grad, min=-grad_bounds, max=grad_bounds)
+    # return grad
 
     # actor_loss = -(chosen_log_probs * advantage_batch.detach()).mean()
     # return actor_loss
+    # normalize_advantage(advantage_batch)
+
+    actor_loss = -(chosen_log_probs * reward_batch.detach()).sum()
+    return actor_loss
+
+    # loss = []
+    # for log_prob, Gt in zip(chosen_log_probs, reward_batch):
+    #     loss.append(-log_prob*Gt)
+    
+    # loss = torch.stack(loss).sum()
+    
+    # return loss
 
 def compute_critic_loss(return_batch, value_batch, value_loss_coeff):
     """Compute the MSE of the advantage"""
     # Compute the value-function loss
     advantage = compute_advantage(return_batch, value_batch)
-    return torch.mean(advantage**2)*value_loss_coeff 
+    print(f"advantage: {advantage}")
+    # advantage = normalize_advantage(advantage)
+    # return torch.mean(advantage**2)*value_loss_coeff 
+    return torch.nn.functional.mse_loss(value_batch, return_batch)
+    # return torch.nn.functional.mse_loss(value_batch, return_batch)

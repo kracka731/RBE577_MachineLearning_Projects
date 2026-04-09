@@ -29,7 +29,8 @@ class Actor(nn.Module):
         # flat_state=self.flatten(state)
         # logits = self.layers(flat_state)
         logits = self.layers(state)
-        return torch.softmax(logits, dim = -1)
+        probs = torch.softmax(logits, dim = -1)
+        return probs
 
     def evaluate_actions(self, states, actions):
         """Return chosen-action log probs and policy entropy."""
@@ -49,7 +50,7 @@ class Actor(nn.Module):
         # 2: fire main engine | 3: fire right orientation engine
 
         # Forward pass
-        action_logits = self(states)
+        action_probs = self(states)
         # A logit is a bijective function that maps probabilities ([0,1])
         # Can be articulated is pi_theta(a_i, s_i) in math
         # Also refered to as action logits
@@ -58,13 +59,14 @@ class Actor(nn.Module):
         # Hint: You will need these when measuring how uncertain the policy is.
         # This portion uses what the model has learned to predict the likely best next action
         # Specifically considering the current state 
-        dist = Categorical(action_logits)
+        dist = Categorical(probs=action_probs)
 
         # Convert the raw outputs into log-probabilities
         # Hint: The loss is written in terms of log probabilities rather than plain probabilities.
         # The log probablities of all possible actions
         # log pi_theta(a|s)
-        actions = actions.view(-1)
+        # print(f"actions: {actions}")
+        # actions = actions.view(-1) # convert to a list of actions
         chosen_log_probs = dist.log_prob(actions)
 
         # TODO: Compute the entropy of the action distribution
@@ -77,19 +79,22 @@ class Actor(nn.Module):
     def get_action(self, state, deterministic):
         # Run the policy on a single state - Forward pass
         with torch.no_grad(): # In order to not include the gradient function to save time and computation
-            logits = self(state) 
+            probs = self(state) 
 
         # Return a greedy action when deterministic evaluation is requested
         if deterministic:
             # Choose the best action
             # consider logits and choose one with the highest probability to be chosen action
-            action = int(torch.argmax(logits).item())
+            # action = probs.argmax().item()
+            action = int(probs.argmax())
+            # dist = Categorical(probs=probs)
+            # action = int(dist.sample())
 
             # print(f"LOGITS:    {logits}")
             # print(f"ACTION:    {action}")
 
         else: # stochastic, randomly choose an action 
-            dist = Categorical(logits=logits)
+            dist = Categorical(probs=probs)
             action = int(dist.sample())
             
         # categorical function can give categorical distribution from softmax 
