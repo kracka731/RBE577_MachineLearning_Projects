@@ -191,7 +191,7 @@ if __name__ == "__main__":
     set_seed(args.seed)
 
     headless = not args.render
-    config = load_config(headless=headless)
+    config = load_config()
 
     if args.device is not None:
         config["device"] = args.device
