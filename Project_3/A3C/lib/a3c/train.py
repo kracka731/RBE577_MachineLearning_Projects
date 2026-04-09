@@ -65,7 +65,7 @@ def train_a3c():
     # interval statistics for logging.
     global_ep = mp.Value('i', 0)  # shared data. signed integer with init value 0. when using, do lock manually!! 
     lock = mp.Lock()  # used to ensure only 1 process can access/modify shared resources at a time
-    manager = mp.Manager()  # use for sharing complex data. handles all synchronization, so you don't have to use lock manually
+    # manager = mp.Manager()  # use for sharing complex data. handles all synchronization, so you don't have to use lock manually
     shared_stats = None  # FIXME: idk what this is supposed to be used for
 
     os.makedirs(config["logging"]["model_dir"], exist_ok=True)
