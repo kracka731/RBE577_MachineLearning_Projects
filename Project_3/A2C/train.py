@@ -216,29 +216,31 @@ def compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2
         # Hint: This branch should involve the critic's value estimates, an advantage term,
         # and a combined loss that updates both networks.
         # value_batch = critic(state_batch) 
-        if test:   
-            with torch.no_grad():
-                value_batch = critic(state_batch).squeeze(-1)
-                next_value_batch = critic(next_state_batch).squeeze(-1) # value of all NEXT states
-        else:
-            value_batch = critic(state_batch).squeeze(-1)
-            next_value_batch = critic(next_state_batch).squeeze(-1) # value of all NEXT states
-
-        # print(f"value_batch mean: {value_batch.mean().item()}")
-        # print(f"return_batch mean: {return_batch.mean().item()}")
-        # next_target = return_batch + (1 - episode_terminations) * config["gamma"] * next_value_batch
-        # advantages = compute_advantage(return_batch, value_batch, next_value_batch, config['gamma'])
-        advantages = compute_advantage_gae(episode_rewards, value_batch, next_value_batch, episode_terminations, config)
-        advantages = normalize_advantage(advantages)
-
-        critic_targets = (advantages.detach() + value_batch).detach().float()
 
         
+
+        value_batch = critic(state_batch).squeeze(-1)
+        next_value_batch = critic(next_state_batch).squeeze(-1) # value of all NEXT states
+
+        print(f"value_batch mean: {value_batch.mean().item()}")
+        print(f"return_batch mean: {return_batch.mean().item()}")
+        # next_target = return_batch + (1 - episode_terminations) * config["gamma"] * next_value_batch
+        advantages = compute_advantage(return_batch, value_batch, next_value_batch, config['gamma'])
+        # advantages = compute_advantage_gae(episode_rewards, value_batch, next_value_batch, episode_terminations, config)
+
+        critic_targets = (advantages + value_batch).detach().float()
+        print(f"mean advantage: {advantages.mean()}")
+        # advantages = normalize_advantage(advantages)
+
+        # print(f"mean normalized advantage: {advantages.mean()}")
+
         actor_loss = compute_actor_loss(chosen_log_probs, advantages.detach(), config['grad_norm_clip'])
         
-        critic_loss = compute_critic_loss(critic_targets, value_batch, advantages, config['value_loss_coef'])
+        # critic_loss = compute_critic_loss(critic_targets, value_batch, advantages, config['value_loss_coef'])
+        print(f"critic_targets: {critic_targets.mean()}")
 
         # critic_loss = torch.nn.functional.mse_loss(value_batch, critic_targets)
+        critic_loss = torch.nn.functional.huber_loss(value_batch, critic_targets)
 
         if not test:
 

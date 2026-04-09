@@ -63,7 +63,9 @@ def compute_advantage(return_batch, value_batch, next_value_batch, gamma):
     # Hint: This quantity should capture how much better or worse the observed return
     # was compared with the critic's prediction.
     # return normalize_advantage(return_batch - value_batch)  
-    advantages = return_batch + gamma*next_value_batch - value_batch
+    # advantages = return_batch - (gamma*next_value_batch + value_batch)
+    advantages = return_batch - value_batch
+    # advantages = return_batch + gamma*next_value_batch - value_batch
     # return (advantages - advantages.mean()) / (advantages.std() + 1e-9)
     return advantages
     # return advantages
@@ -94,7 +96,7 @@ def normalize_advantage(advantage_batch):
     return (advantage_batch - mean_adv) / std_adv
 
 
-def compute_actor_loss(chosen_log_probs, reward_batch, grad_bounds=100):
+def compute_actor_loss(chosen_log_probs, reward_batch, grad_bounds=100, a2c=False):
     """Compute policy loss through REINFORCE: derivative of the objective 
     function = grad(J(theta))"""
     # First term sum(grad(log(policy)) 
@@ -112,8 +114,9 @@ def compute_actor_loss(chosen_log_probs, reward_batch, grad_bounds=100):
     # actor_loss = -(chosen_log_probs * advantage_batch.detach()).mean()
     # return actor_loss
     # normalize_advantage(advantage_batch)
-
+    
     actor_loss = (-chosen_log_probs * reward_batch.detach()).sum()
+    
     # actor_loss = torch.clamp(actor_loss, min=-grad_bounds, max=grad_bounds)
     return actor_loss
 
