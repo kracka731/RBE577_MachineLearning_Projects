@@ -120,6 +120,9 @@ def train_actor_critic(config_path=None, plot=True):
     
     if use_a2c:
         critic_optim = (optim.Adam(critic.parameters(), lr=config["critic_lr"]))
+        print("Critic parameters:")
+        for name, param in critic.named_parameters():
+            print(f"{name}: requires_grad={param.requires_grad}")
         critic_optim.zero_grad()
     else:
         critic_optim = None
@@ -129,14 +132,14 @@ def train_actor_critic(config_path=None, plot=True):
     for i_episode in range(config["num_episodes"]):
 
         #absolutely not object oriented programming
-        state_batch, next_state_batch, action_batch, return_batch, chosen_log_probs, entropy, episode_rewards, episode_terminations = run_episode(actor, env, obs_normalizer, i_episode, False)
+        state_batch, next_state_batch, action_batch, return_batch, reward_batch, chosen_log_probs, entropy, episode_rewards, episode_terminations = run_episode(actor, env, obs_normalizer, i_episode, False)
 
-        actor_loss, critic_loss = compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2c, chosen_log_probs, return_batch, state_batch, next_state_batch, episode_terminations, entropy, config, False)
+        actor_loss, critic_loss = compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2c, chosen_log_probs, return_batch, state_batch, next_state_batch, episode_terminations, reward_batch, entropy, config, False)
 
         # Test loss every 10 episodes
         if i_episode % 10 == 0:
-            state_batch, next_state_batch, action_batch, return_batch, chosen_log_probs, entropy, episode_rewards, episode_terminations = run_episode(actor, env, obs_normalizer, i_episode, True)
-            actor_loss, critic_loss = compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2c, chosen_log_probs, return_batch, state_batch, next_state_batch, episode_terminations, entropy, config, True)
+            state_batch, next_state_batch, action_batch, return_batch, reward_batch, chosen_log_probs, entropy, episode_rewards, episode_terminations = run_episode(actor, env, obs_normalizer, i_episode, True)
+            actor_loss, critic_loss = compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2c, chosen_log_probs, return_batch, state_batch, next_state_batch, episode_terminations, reward_batch, entropy, config, True)
             # actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
             # actor_loss -= config.get('entropy_coef', 0) * entropy.mean()
             # critic_loss = None
@@ -183,11 +186,12 @@ def train_actor_critic(config_path=None, plot=True):
     env.close()
     return actor
 
-def compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2c, chosen_log_probs, return_batch, state_batch, next_state_batch, episode_terminations, entropy, config, test=False):
+def compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2c, chosen_log_probs, return_batch, state_batch, next_state_batch, episode_terminations, episode_rewards, entropy, config, test=False):
     
     if use_reinforce: #this is the REINFORCE case where we don't use a critic, so the advantage is just the return
         # print("Using REINFORCE")
         # Policy-gradient update for REINFORCE
+        return_batch = normalize_advantage(return_batch)
         actor_loss = compute_actor_loss(chosen_log_probs, return_batch, config['grad_norm_clip'])
         
         
@@ -220,30 +224,44 @@ def compute_grad(actor, critic, actor_optim, critic_optim, use_reinforce, use_a2
             value_batch = critic(state_batch).squeeze(-1)
             next_value_batch = critic(next_state_batch).squeeze(-1) # value of all NEXT states
 
+        # print(f"value_batch mean: {value_batch.mean().item()}")
+        # print(f"return_batch mean: {return_batch.mean().item()}")
         # next_target = return_batch + (1 - episode_terminations) * config["gamma"] * next_value_batch
-        # advantages = compute_advantage(return_batch, next_value_batch)
-        advantages = compute_advantage_gae(return_batch, value_batch, next_value_batch, episode_terminations, config)
+        # advantages = compute_advantage(return_batch, value_batch, next_value_batch, config['gamma'])
+        advantages = compute_advantage_gae(episode_rewards, value_batch, next_value_batch, episode_terminations, config)
+        advantages = normalize_advantage(advantages)
 
-        next_targets = (advantages + value_batch).float()
+        critic_targets = (advantages.detach() + value_batch).detach().float()
+
         
-        actor_loss = compute_actor_loss(chosen_log_probs, advantages, config['grad_norm_clip'])
+        actor_loss = compute_actor_loss(chosen_log_probs, advantages.detach(), config['grad_norm_clip'])
         
-        critic_loss = compute_critic_loss(next_targets, value_batch, config['value_loss_coef'])
-        # print(f"critic_loss: {critic_loss}")
-        # if i_episode % 5 == 0:
-        #     print(f"episode {i_episode} critic_loss: {critic_loss}")
-        
-        # print(f"type: {critic_loss.type()}")
+        critic_loss = compute_critic_loss(critic_targets, value_batch, advantages, config['value_loss_coef'])
+
+        # critic_loss = torch.nn.functional.mse_loss(value_batch, critic_targets)
+
         if not test:
+
+            actor_loss -= config.get('entropy_coef', 0) * entropy.mean()
+
             # Perform backprop
             actor_optim.zero_grad()
-            critic_optim.zero_grad()
-
-            # with torch.no_grad(): 
             actor_loss.backward()
-            (critic_loss*config['value_loss_coef']).backward()
             actor_optim.step()
+
+            critic_optim.zero_grad()
+            # (critic_loss*config['value_loss_coef']).backward()
+            critic_loss.backward()
+            # total_norm = 0.0
+            # for p in critic.parameters():
+            #     if p.grad is not None:
+            #         total_norm += p.grad.norm().item() ** 2
+            # print(f"Critic grad norm: {total_norm ** 0.5:.4f}")            
+            
             critic_optim.step()
+        # else:
+        #     print(f"advantage: {advantages}")
+
 
         return actor_loss, critic_loss
         
@@ -295,6 +313,7 @@ def run_episode(actor, env, obs_normalizer, i_episode, det_bool=False):
     state_batch = torch.stack(episode_states) # already a tensor
     next_state_batch = torch.tensor(np.stack(episode_next_states))
     action_batch = torch.tensor(np.stack(episode_actions))
+    reward_batch = torch.tensor(np.stack(episode_rewards))
 
     # assert len(state_batch) == len(action_batch), f"Values should be equal. |state_batch_len = {len(state_batch)}| |action_batch_len = {len(action_batch)}|"
     # print(f"Episode rewards: {episode_rewards}")
@@ -309,7 +328,7 @@ def run_episode(actor, env, obs_normalizer, i_episode, det_bool=False):
     # optional 
     # actor_loss -=  config['value_loss_coef'] * entropy
 
-    return state_batch, next_state_batch, action_batch, return_batch, chosen_log_probs, entropy, episode_rewards, episode_terminations
+    return state_batch, next_state_batch, action_batch, return_batch, reward_batch, chosen_log_probs, entropy, episode_rewards, episode_terminations
 
 
 if __name__ == "__main__":

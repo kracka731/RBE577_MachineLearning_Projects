@@ -72,7 +72,7 @@ class Actor(nn.Module):
         # TODO: Compute the entropy of the action distribution
         # Hint: Entropy should be larger when the policy is spread out and smaller when it is confident.
         # An entropy bonus can be added to the actor's objectrage exploration (but not in this implementation?)
-        entropy = dist.entropy()
+        entropy = dist.entropy().mean()
 
         return chosen_log_probs, entropy
     

@@ -41,7 +41,7 @@ def compute_discounted_returns(rewards, gamma, bootstrap_value=None):
     discounted_returns = torch.tensor(discounted_returns_list)
 
     #normalize
-    discounted_returns = (discounted_returns - discounted_returns.mean()) / (discounted_returns.std() + 1e-9)
+    # discounted_returns = (discounted_returns - discounted_returns.mean()) / (discounted_returns.std() + 1e-9)
 
     # Package the per-step returns into a single tensor
     # Hint: The training code expects one tensor containing all timesteps.
@@ -57,15 +57,15 @@ def compute_discounted_returns(rewards, gamma, bootstrap_value=None):
 
     # for t in reversed(range(n_steps)):
 
-def compute_advantage(return_batch, value_batch):
+def compute_advantage(return_batch, value_batch, next_value_batch, gamma):
     """A2C: compute difference in observed return vs critic's prediction"""
     # Compute the advantage estimate
     # Hint: This quantity should capture how much better or worse the observed return
     # was compared with the critic's prediction.
     # return normalize_advantage(return_batch - value_batch)  
-    advantages = return_batch - value_batch
+    advantages = return_batch + gamma*next_value_batch - value_batch
     # return (advantages - advantages.mean()) / (advantages.std() + 1e-9)
-    return normalize_advantage(advantages)
+    return advantages
     # return advantages
 
 def compute_advantage_gae(return_batch, value_batch, next_value_batch, episode_terminations, config):
@@ -83,18 +83,18 @@ def compute_advantage_gae(return_batch, value_batch, next_value_batch, episode_t
     return advantages
 
 def normalize_advantage(advantage_batch):
-    if advantage_batch.numel() <= 1:
-        return advantage_batch
-    return (
-        advantage_batch - advantage_batch.mean()
-    ) / (advantage_batch.std(unbiased=False) + 1e-8)
+    # if advantage_batch.numel() <= 1:
+    #     return advantage_batch
+    # return (
+    #     advantage_batch - advantage_batch.mean()
+    # ) / (advantage_batch.std(unbiased=False) + 1e-8)
     # return (advantage_batch - advantage_batch.mean()) / (advantage_batch.std() + 1e-9)
-    # mean_adv = torch.mean(advantage_batch)
-    # std_adv = torch.std(advantage_batch) + 1e-8
-    # return (advantage_batch - mean_adv) / std_adv
+    mean_adv = torch.mean(advantage_batch)
+    std_adv = torch.std(advantage_batch) + 1e-8
+    return (advantage_batch - mean_adv) / std_adv
 
 
-def compute_actor_loss(chosen_log_probs, reward_batch, grad_bounds=None):
+def compute_actor_loss(chosen_log_probs, reward_batch, grad_bounds=100):
     """Compute policy loss through REINFORCE: derivative of the objective 
     function = grad(J(theta))"""
     # First term sum(grad(log(policy)) 
@@ -113,7 +113,8 @@ def compute_actor_loss(chosen_log_probs, reward_batch, grad_bounds=None):
     # return actor_loss
     # normalize_advantage(advantage_batch)
 
-    actor_loss = -(chosen_log_probs * reward_batch.detach()).sum()
+    actor_loss = (-chosen_log_probs * reward_batch.detach()).sum()
+    # actor_loss = torch.clamp(actor_loss, min=-grad_bounds, max=grad_bounds)
     return actor_loss
 
     # loss = []
@@ -124,7 +125,7 @@ def compute_actor_loss(chosen_log_probs, reward_batch, grad_bounds=None):
     
     # return loss
 
-def compute_critic_loss(return_batch, value_batch, value_loss_coeff):
+def compute_critic_loss(target_return_batch, value_batch, advantage, value_loss_coeff):
     """Compute the MSE of the advantage"""
     # Compute the value-function loss
     # advantage = compute_advantage(return_batch, value_batch)
@@ -134,7 +135,8 @@ def compute_critic_loss(return_batch, value_batch, value_loss_coeff):
     # print(f"size1: {value_batch.type()}")
     # print(f"size2: {return_batch.detach().type()}")
 
-    critic_loss = torch.nn.functional.mse_loss(value_batch, return_batch.detach())
+    critic_loss = torch.nn.functional.mse_loss(value_batch, target_return_batch)*value_loss_coeff
+    # critic_loss = (advantage.pow(2)).mean()
     # print(f"size3: {critic_loss.type()}")
 
     return critic_loss
