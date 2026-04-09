@@ -3,6 +3,7 @@ from datetime import datetime
 
 import torch
 import torch.nn.functional as F
+import numpy as np
 
 from helpers.metrics import MetricsTracker
 from helpers.utils import (get_network_input_shape, get_screen, 
@@ -80,6 +81,7 @@ def worker_process(
         # TODO: Refresh local parameters and clear stale gradients
         # Hint: Each rollout should start from the newest shared weights, and the
         # local worker model should not carry old gradients into the next update.
+        optimizer.zero_grad()
         env.reset()  # Replace with your implementation
         setup_camera(env, config)
         state = get_screen(env, device, config)
@@ -165,6 +167,7 @@ def worker_process(
         for local_param, global_param in zip(local_net.parameters(), global_net.parameters()):
             global_param._grad = local_param.grad
         torch.nn.utils.clip_grad_norm_(local_net.parameters(), grad_clip)
+        # torch.nn.utils.clip_grad_norm_(global_net.parameters(), grad_clip)
         optimizer.step()
 
         # TODO: Apply the shared update inside a synchronized section
@@ -180,9 +183,13 @@ def worker_process(
             # TODO: Update the shared episode counter and logging stats
             with global_ep.get_lock(): # FIXME with lock vs with global_ep.get_lock()???
                 global_ep.value = global_ep.value + 1
-                if global_ep.value % 50 == 0:
+                if global_ep.value % 25 == 0:
                     print(f"GLOBAL EP: {global_ep.value}")
-            # FIXME ????  
+            with lock:
+                if np.isnan([total_loss_value]):
+                    total_loss_value = 0
+                shared_stats.append([episode_reward, total_loss_value, episode_steps])
+            # FIXME logging stats  
 
             env.reset()
             setup_camera(env, config)

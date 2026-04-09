@@ -3,6 +3,9 @@ import os
 import torch
 import torch.multiprocessing as mp
 import torch.optim as optim
+import matplotlib.pyplot as plt
+import numpy as np
+
 
 from helpers.config import load_config
 from helpers.logger import A3CLogger
@@ -47,6 +50,25 @@ def save_final_checkpoint(global_net, optimizer, config):
     )
     return model_path
 
+def plot_stats(shared_stats, plot=True):
+    if plot:
+        stats = np.asarray(shared_stats)
+        print(f"stats shape: {np.shape(stats)}")
+        reward_history, losses = stats[:, 0], stats[:, 1]
+        print(f"reward hist: {reward_history}, losses: {losses}")
+        fig, axs = plt.subplots(1,2)
+        axs[0].plot(reward_history, label="reward", alpha=0.35)
+        axs[0].set_xlabel("Number of Episodes")
+        axs[0].set_ylabel("Episode Reward")
+        axs[0].set_title("History of Episode Reward")
+        axs[0].legend()
+
+        axs[1].plot(losses, label="loss", alpha=0.35)
+        axs[1].set_xlabel("Number of Episodes")
+        axs[1].set_ylabel("Loss")
+        axs[1].set_title("History of Loss")
+        axs[1].legend()
+        
 
 def train_a3c():
     config = load_config()
@@ -65,8 +87,8 @@ def train_a3c():
     # interval statistics for logging.
     global_ep = mp.Value('i', 0)  # shared data. signed integer with init value 0. when using, do lock manually!! 
     lock = mp.Lock()  # used to ensure only 1 process can access/modify shared resources at a time
-    # manager = mp.Manager()  # use for sharing complex data. handles all synchronization, so you don't have to use lock manually
-    shared_stats = None  # FIXME: idk what this is supposed to be used for
+    manager = mp.Manager()  # use for sharing complex data. handles all synchronization, so you don't have to use lock manually
+    shared_stats = manager.list()  # FIXME: idk what this is supposed to be used for
 
     os.makedirs(config["logging"]["model_dir"], exist_ok=True)
 
@@ -97,6 +119,9 @@ def train_a3c():
     # TODO: Wait for all worker processes to finish
     for p in processes:
         p.join()
+    
+    plot_stats(shared_stats, plot=True)
+    plt.show()
 
     # TODO: Save the final checkpoint and clean up shared manager resources
     model_path = save_final_checkpoint(global_net, optimizer, config)
