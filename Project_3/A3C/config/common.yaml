@@ -1,7 +1,7 @@
 # Common configuration parameters
 env:
   name: "KukaDiverseObjectEnv"
-  renders: true  # Will be overridden for workers
+  renders: false  # Will be overridden for workers
   isDiscrete: false
   removeHeightHack: false
   maxSteps: 20

@@ -164,6 +164,7 @@ class ActorCritic(nn.Module):
         # TODO: Convert the learnable exploration parameter into a valid standard deviation
         sigma = F.softplus(self.sigma) + 1e-6 # stable, avoids 0
         sigma = sigma.expand_as(action_loc)
+        sigma = torch.clamp(sigma, 1e-6, 1.0)
 
         # TODO: Build the bounded continuous action distribution
         # Hint: The current setup uses a Gaussian base distribution together with a squashing transform.

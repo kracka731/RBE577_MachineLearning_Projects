@@ -3,7 +3,6 @@ from datetime import datetime
 
 import torch
 import torch.nn.functional as F
-from torch.distributions import Categorical
 
 from helpers.metrics import MetricsTracker
 from helpers.utils import (get_network_input_shape, get_screen, 
@@ -98,9 +97,15 @@ def worker_process(
             # model helper to turn the actor output into a distribution.
             action_loc, value = local_net(state)  # Replace with your implementation
             dist = local_net.get_action_distribution(action_loc)  # Replace with your implementation
+            
+            # debug - prevent exploding vals
+            if torch.isnan(action_loc).any():
+                print("NaN detected in action_loc")
+                break
 
             # TODO: Sample an action and compute the policy terms needed later
-            action = dist.rsample().flatten()  
+            action = dist.rsample()  
+            action = torch.clamp(action, -1 + 1e-6, 1 - 1e-6).flatten()
             log_prob = dist.log_prob(action)  # Replace with your implementation
             entropy = -log_prob  # FIXME slightly inaccurate since dist.entropy doesnt work
             action_np = None  # Replace with your implementation
@@ -150,6 +155,7 @@ def worker_process(
         critic_loss_value = critic_loss.item()
         total_loss_value = total_loss.item()
         policy_std_value = float(F.softplus(local_net.sigma).mean().item())
+        # print(f"Losses. Actor {actor_loss_value} | Critic {critic_loss_value} | Tot {total_loss_value} | STD {policy_std_value}")
 
         # TODO: Backpropagate through the local worker model and clip gradients
         # Hint: Gradients are still computed on the worker's local network first.
@@ -158,6 +164,7 @@ def worker_process(
         total_loss.backward()
         for local_param, global_param in zip(local_net.parameters(), global_net.parameters()):
             global_param._grad = local_param.grad
+        torch.nn.utils.clip_grad_norm_(local_net.parameters(), grad_clip)
         optimizer.step()
 
         # TODO: Apply the shared update inside a synchronized section
@@ -173,6 +180,7 @@ def worker_process(
             # TODO: Update the shared episode counter and logging stats
             with global_ep.get_lock(): # FIXME with lock vs with global_ep.get_lock()???
                 global_ep.value = global_ep.value + 1
+                # print(f"GLOBAL EP: {global_ep.value}")
             # FIXME ????  
 
             env.reset()
@@ -183,5 +191,9 @@ def worker_process(
 
         if current_ep is not None and current_ep >= max_episodes:
             break
+    print(f"Metrics: ----------")
+    print(f"Avg reward: {metrics.get_average_reward()}")
+    print(f"Avg loss: {metrics.get_average_loss}")
+    print(f"Avg episode len: {metrics.get_average_episode_length()}")
 
     env.close()

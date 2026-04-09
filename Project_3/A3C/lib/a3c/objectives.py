@@ -22,11 +22,19 @@ def compute_bootstrapped_returns(rewards, gamma, bootstrap_value):
     returns = torch.flip(returns, (0,))
     return returns  # Replace with your implementation
 
+def normalize_advantage(advantage_batch):
+    if advantage_batch.numel() <= 1:
+        return advantage_batch
+    mean_adv = torch.mean(advantage_batch)
+    std_adv = torch.std(advantage_batch) + 1e-8
+    return (advantage_batch - mean_adv) / std_adv
+
 def compute_advantage(return_batch, value_batch):
     """Plain actor-critic advantage."""
     # TODO: Compute how much better or worse the observed return was than
     # the critic's prediction at each timestep.
-    return return_batch - value_batch  # Replace with your implementation
+    adv = return_batch - value_batch
+    return normalize_advantage(adv)  
 
 def compute_actor_loss(log_prob_batch, advantage_batch, entropy_batch, entropy_coef):
     """Policy loss with an entropy bonus for exploration."""

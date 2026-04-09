@@ -58,12 +58,11 @@ def train_a3c():
     mp.set_start_method('spawn', force=True)
 
     # TODO: Create the shared training objects used by all workers
+    global_net = build_global_model(config, device) 
+    optimizer = SharedAdam(global_net.parameters(), lr=config['hyperparameters']['lr']) 
+    optimizer.share_memory()
 
     # interval statistics for logging.
-    global_net = build_global_model(config, device) 
-    # optimizer = SharedAdam(global_net.parameters(), lr=config['hyperparameters']['lr']) 
-    optimizer = optim.Adam(global_net.parameters(), lr=config['hyperparameters']['lr'])  
-
     global_ep = mp.Value('i', 0)  # shared data. signed integer with init value 0. when using, do lock manually!! 
     lock = mp.Lock()  # used to ensure only 1 process can access/modify shared resources at a time
     manager = mp.Manager()  # use for sharing complex data. handles all synchronization, so you don't have to use lock manually

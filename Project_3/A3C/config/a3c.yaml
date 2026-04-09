@@ -1,10 +1,10 @@
 hyperparameters:
   t_max: 20              # rollout length for each worker before update
-  max_episodes: 10000   # total episodes to run across workers
+  max_episodes: 100   # total episodes to run across workers
   gamma: 0.99            # discount factor
   entropy_coef: 0.01     # entropy bonus coefficient
   value_loss_coef: 0.5   # value loss coefficient
-  lr: 2.0e-4             # learning rate
+  lr: 2.0e-5             # learning rate
   num_workers: 4      # number of parallel worker processes
   grad_clip: 40.0        # gradient clipping threshold
 
