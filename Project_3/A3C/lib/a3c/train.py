@@ -100,6 +100,6 @@ def train_a3c():
         p.join()
 
     # TODO: Save the final checkpoint and clean up shared manager resources
-    model_path = None  # Replace with your implementation
+    model_path = save_final_checkpoint(global_net, optimizer, config)
     logger.info(f"Final model saved to {model_path}. Training complete!")
     logger.close()
