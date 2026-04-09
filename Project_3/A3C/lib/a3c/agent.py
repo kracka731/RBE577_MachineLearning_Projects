@@ -180,7 +180,8 @@ def worker_process(
             # TODO: Update the shared episode counter and logging stats
             with global_ep.get_lock(): # FIXME with lock vs with global_ep.get_lock()???
                 global_ep.value = global_ep.value + 1
-                # print(f"GLOBAL EP: {global_ep.value}")
+                if global_ep.value % 50 == 0:
+                    print(f"GLOBAL EP: {global_ep.value}")
             # FIXME ????  
 
             env.reset()
@@ -193,7 +194,7 @@ def worker_process(
             break
     print(f"Metrics: ----------")
     print(f"Avg reward: {metrics.get_average_reward()}")
-    print(f"Avg loss: {metrics.get_average_loss}")
+    print(f"Avg loss: {metrics.get_average_loss()}")
     print(f"Avg episode len: {metrics.get_average_episode_length()}")
 
     env.close()
