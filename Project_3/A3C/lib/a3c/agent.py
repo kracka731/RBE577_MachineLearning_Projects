@@ -3,9 +3,11 @@ from datetime import datetime
 
 import torch
 import torch.nn.functional as F
+from torch.distributions import Categorical
 
 from helpers.metrics import MetricsTracker
-from helpers.utils import get_network_input_shape, get_screen, make_env, setup_camera
+from helpers.utils import (get_network_input_shape, get_screen, 
+                           make_env, setup_camera, get_kuka_action_dim)
 from lib.a3c.model import ActorCritic
 from lib.a3c.objectives import (
     compute_actor_loss,
@@ -43,12 +45,17 @@ def worker_process(
     env = make_env(config, worker_id)
 
     # TODO: Create the worker's local actor-critic network
+    state_dim = get_network_input_shape(config)
+    action_dim = get_kuka_action_dim(config)
+    net = config['network']
 
-    local_net = None  # Replace with your implementation
+    local_net = ActorCritic(state_dim, action_dim, net["shared_layers"], 
+                            net["critic_hidden_layers"], net["actor_hidden_layers"], 
+                            init_type=net["init_type"])
+    local_net.to(device)
 
     # TODO: Synchronize the local worker network with the shared global network
-
-    pass  # Replace with your implementation
+    local_net.load_state_dict(global_net.state_dict())  # Replace with your implementation
 
     metrics = MetricsTracker()
 
@@ -74,38 +81,40 @@ def worker_process(
         # TODO: Refresh local parameters and clear stale gradients
         # Hint: Each rollout should start from the newest shared weights, and the
         # local worker model should not carry old gradients into the next update.
-        pass  # Replace with your implementation
+        env.reset()  # Replace with your implementation
+        setup_camera(env, config)
+        state = get_screen(env, device, config)
+        #FIXME: probably missing things here
 
-        log_probs = []
+        log_probs = torch.empty((1, action_dim)).to(device)
         values = []
         rewards = []
-        entropies = []
+        entropies = torch.empty((1, action_dim)).to(device)
         done = False
 
         for _ in range(t_max):
             # TODO: Run the local network to get the current policy output and value estimate
             # Hint: The model returns the actor output and critic value; then use the
             # model helper to turn the actor output into a distribution.
-            action_loc = None  # Replace with your implementation
-            value = None  # Replace with your implementation
-            dist = None  # Replace with your implementation
+            action_loc, value = local_net(state)  # Replace with your implementation
+            dist = local_net.get_action_distribution(action_loc)  # Replace with your implementation
 
             # TODO: Sample an action and compute the policy terms needed later
-
-            action = None  # Replace with your implementation
-            log_prob = None  # Replace with your implementation
-            entropy = None  # Replace with your implementation
+            action = dist.rsample().flatten()  
+            log_prob = dist.log_prob(action)  # Replace with your implementation
+            entropy = -log_prob  # FIXME slightly inaccurate since dist.entropy doesnt work
             action_np = None  # Replace with your implementation
 
             # TODO: Step the environment and preprocess the next observation
-
-            next_state = None  # Replace with your implementation
-            reward = None  # Replace with your implementation
-            done = None  # Replace with your implementation
+            observation, reward, done, debug = env.step(action)
+            next_state = get_screen(env, device, config)  # Replace with your implementation
 
             # TODO: Save the rollout information needed for the loss computation
             # Hint: Store the policy terms, value estimates, and rewards one step at a time.
-            pass  # Replace with your implementation
+            log_probs = torch.vstack([log_probs, log_prob])
+            values.append(value)
+            rewards.append(reward)
+            entropies = torch.vstack([entropies, entropy])
 
             episode_reward += reward
             episode_steps += 1
@@ -118,18 +127,25 @@ def worker_process(
             # TODO: Compute the bootstrap value at the rollout boundary
             # Hint: If the episode ended, the bootstrap target should be zero.
             # Otherwise, use the local critic to estimate the unfinished tail.
-            bootstrap_value = None  # Replace with your implementation
+            if not done:
+                bootstrap_value = 0
+            else:
+                bootstrap_value = float(reward + gamma * value * (1-done))
+                # FIXME additional computations
+            values.append(value + bootstrap_value)
 
         # TODO: Convert the rollout into batched tensors and objectives
-        return_batch = None  # Replace with your implementation
-        log_prob_batch = None  # Replace with your implementation
-        value_batch = None  # Replace with your implementation
-        entropy_batch = None  # Replace with your implementation
-        advantage_batch = None  # Replace with your implementation
-        actor_loss = None  # Replace with your implementation
-        critic_loss = None  # Replace with your implementation
-        total_loss = None  # Replace with your implementation
+        return_batch = compute_bootstrapped_returns(rewards, gamma, bootstrap_value) 
+        log_prob_batch = log_probs
+        value_batch = torch.tensor(values).squeeze()
+        entropy_batch = entropies 
+        
+        advantage_batch = compute_advantage(return_batch, value_batch.detach()).to(device) 
+        actor_loss = compute_actor_loss(log_prob_batch, advantage_batch.detach(), entropy_batch, entropy_coef) 
+        critic_loss = compute_critic_loss(return_batch.detach(), value_batch) 
+        total_loss = actor_loss + value_loss_coef*critic_loss  
 
+        # FIXME: i didnt write these next 4 lines but what are they???
         actor_loss_value = actor_loss.item()
         critic_loss_value = critic_loss.item()
         total_loss_value = total_loss.item()
@@ -137,19 +153,27 @@ def worker_process(
 
         # TODO: Backpropagate through the local worker model and clip gradients
         # Hint: Gradients are still computed on the worker's local network first.
-        pass  # Replace with your implementation
+        # FIXME ???
+        optimizer.zero_grad()
+        total_loss.backward()
+        for local_param, global_param in zip(local_net.parameters(), global_net.parameters()):
+            global_param._grad = local_param.grad
+        optimizer.step()
 
         # TODO: Apply the shared update inside a synchronized section
-        pass  # Replace with your implementation
+        # FIXME ???
+        local_net.load_state_dict(global_net.state_dict())
 
-        current_ep = None
+        current_ep = global_ep.value
         if done:
             metrics.add_episode_reward(episode_reward)
             metrics.add_loss(total_loss_value)
             metrics.add_episode_length(episode_steps)
 
             # TODO: Update the shared episode counter and logging stats
-            pass  
+            with global_ep.get_lock(): # FIXME with lock vs with global_ep.get_lock()???
+                global_ep.value = global_ep.value + 1
+            # FIXME ????  
 
             env.reset()
             setup_camera(env, config)

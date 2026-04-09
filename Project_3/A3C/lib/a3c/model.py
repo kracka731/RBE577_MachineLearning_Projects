@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions import Independent, Normal, TanhTransform, TransformedDistribution
+from torch.distributions import Categorical, Independent, Normal, TanhTransform, TransformedDistribution
 from helpers.utils import build_hidden_layer
 
 
@@ -153,18 +153,21 @@ class ActorCritic(nn.Module):
         action_loc = self.actor(a)  # Replace with your implementation
 
         # Update std dev 
-        sigma = torch.exp(self.sigma).expand_as(action_loc)
+        # FIXME ?????
+        # sigma = torch.exp(self.sigma).expand_as(action_loc)
+        sigma = F.softplus(self.sigma) + 1e-6
 
         return action_loc, value
 
     def get_action_distribution(self, action_loc):
         """Build a tanh-squashed Gaussian policy over bounded actions."""
         # TODO: Convert the learnable exploration parameter into a valid standard deviation
-        sigma = torch.std(self.sigma, dim=0)  # Replace with your implementation
+        sigma = F.softplus(self.sigma) + 1e-6 # stable, avoids 0
+        sigma = sigma.expand_as(action_loc)
 
         # TODO: Build the bounded continuous action distribution
         # Hint: The current setup uses a Gaussian base distribution together with a squashing transform.
-        base_dist = Normal(loc=action_loc.mean(), scale=sigma) 
-        transforms = [Independent(), TanhTransform()] # FIXME: maybe just tanh? maybe tanh then indep? 
+        base_dist = Normal(loc=action_loc, scale=sigma) 
+        transforms = [TanhTransform(cache_size=1)] # FIXME: maybe just tanh? maybe tanh then indep? 
         dist = TransformedDistribution(base_dist, transforms)
-        return dist  # Replace with your implementation
+        return dist  
