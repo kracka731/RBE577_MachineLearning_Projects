@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical, Independent, Normal, TanhTransform, TransformedDistribution
 from helpers.utils import build_hidden_layer
+import math
 
 
 class ActorCritic(nn.Module):
@@ -168,7 +169,23 @@ class ActorCritic(nn.Module):
 
         # TODO: Build the bounded continuous action distribution
         # Hint: The current setup uses a Gaussian base distribution together with a squashing transform.
+        # print(f"action_loc: {action_loc}")
+        # print(f"sigma: {sigma}")
+        
         base_dist = Normal(loc=action_loc, scale=sigma) 
-        transforms = [TanhTransform(cache_size=1)] # FIXME: maybe just tanh? maybe tanh then indep? 
-        dist = TransformedDistribution(base_dist, transforms)
-        return dist  
+        entropy = self.compute_entropy(base_dist)
+        # print(f"entropy: {entropy}")
+        # transforms = [TanhTransform(cache_size=1)] # FIXME: maybe just tanh? maybe tanh then indep? 
+        
+        dist = TransformedDistribution(base_dist, TanhTransform())
+        dist = Independent(dist, 1)
+
+        return dist, entropy
+    
+    def compute_entropy(self, base_dist, num_samples=10):
+        # Sample pre-tanh values
+        x = base_dist.rsample((num_samples,))
+        log_det_J = 2.0 * (math.log(2.0) - x - F.softplus(-2.0 * x))
+        expected_log_det_J = log_det_J.mean(dim=0)
+        base_entropy = base_dist.entropy()
+        return (base_entropy - expected_log_det_J).mean()

@@ -4,6 +4,8 @@ from datetime import datetime
 import torch
 import torch.nn.functional as F
 import numpy as np
+from torch.distributions import Categorical
+import math
 
 from helpers.metrics import MetricsTracker
 from helpers.utils import (get_network_input_shape, get_screen, 
@@ -27,6 +29,8 @@ def emit_log(message, log_path=None):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(log_path, "a", encoding="utf-8") as log_file:
         log_file.write(f"{timestamp} - INFO - {message}\n")
+
+
 
 
 def worker_process(
@@ -87,10 +91,13 @@ def worker_process(
         state = get_screen(env, device, config)
         #FIXME: probably missing things here
 
-        log_probs = torch.empty((1, action_dim)).to(device)
+        # log_probs = torch.empty((1, action_dim)).to(device)
         values = []
         rewards = []
-        entropies = torch.empty((1, action_dim)).to(device)
+        log_prob_list = []
+        entropy_list = []
+
+        # entropies = torch.empty((1, action_dim)).to(device)
         done = False
 
         for _ in range(t_max):
@@ -98,7 +105,7 @@ def worker_process(
             # Hint: The model returns the actor output and critic value; then use the
             # model helper to turn the actor output into a distribution.
             action_loc, value = local_net(state)  # Replace with your implementation
-            dist = local_net.get_action_distribution(action_loc)  # Replace with your implementation
+            dist, entropy = local_net.get_action_distribution(action_loc)  # Replace with your implementation
             
             # debug - prevent exploding vals
             if torch.isnan(action_loc).any():
@@ -106,10 +113,14 @@ def worker_process(
                 break
 
             # TODO: Sample an action and compute the policy terms needed later
-            action = dist.rsample()  
+            # action = dist.rsample()  
+            # entropy = compute_entropy(dist)
+            action = dist.sample()
             action = torch.clamp(action, -1 + 1e-6, 1 - 1e-6).flatten()
-            log_prob = dist.log_prob(action)  # Replace with your implementation
-            entropy = -log_prob  # FIXME slightly inaccurate since dist.entropy doesnt work
+            log_prob = dist.log_prob(action)  
+            # print(f"log_prob: {log_prob.detach()}")
+            # entropy = log_prob
+            # print(f"entropy: {entropy}")
             action_np = None  # Replace with your implementation
 
             # TODO: Step the environment and preprocess the next observation
@@ -118,10 +129,12 @@ def worker_process(
 
             # TODO: Save the rollout information needed for the loss computation
             # Hint: Store the policy terms, value estimates, and rewards one step at a time.
-            log_probs = torch.vstack([log_probs, log_prob])
+            # log_probs = torch.vstack([log_probs, log_prob])
+            log_prob_list.append(log_prob)
             values.append(value)
             rewards.append(reward)
-            entropies = torch.vstack([entropies, entropy])
+            entropy_list.append(entropy)
+            # entropies = torch.vstack([entropies, entropy])
 
             episode_reward += reward
             episode_steps += 1
@@ -143,13 +156,13 @@ def worker_process(
 
         # TODO: Convert the rollout into batched tensors and objectives
         return_batch = compute_bootstrapped_returns(rewards, gamma, bootstrap_value) 
-        log_prob_batch = log_probs
-        value_batch = torch.tensor(values).squeeze()
-        entropy_batch = entropies 
+        log_prob_batch = torch.stack(log_prob_list)
+        value_batch = torch.tensor(values).squeeze(-1)
+        entropy_batch = torch.stack(entropy_list)
         
         advantage_batch = compute_advantage(return_batch, value_batch.detach()).to(device) 
-        actor_loss = compute_actor_loss(log_prob_batch, advantage_batch.detach(), entropy_batch, entropy_coef) 
-        critic_loss = compute_critic_loss(return_batch.detach(), value_batch) 
+        actor_loss = compute_actor_loss(log_prob_batch, advantage_batch.detach(), entropy_batch, entropy_coef)
+        critic_loss = compute_critic_loss(return_batch.detach(), value_batch)
         total_loss = actor_loss + value_loss_coef*critic_loss  
 
         # FIXME: i didnt write these next 4 lines but what are they???
