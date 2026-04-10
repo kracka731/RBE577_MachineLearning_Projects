@@ -1,6 +1,6 @@
 hyperparameters:
   t_max: 20              # rollout length for each worker before update
-  max_episodes: 100   # total episodes to run across workers
+  max_episodes: 2500   # total episodes to run across workers
   gamma: 0.99            # discount factor
   entropy_coef: 0.01     # entropy bonus coefficient
   value_loss_coef: 0.5   # value loss coefficient

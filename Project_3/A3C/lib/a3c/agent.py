@@ -140,8 +140,12 @@ def worker_process(
             episode_steps += 1
             state = next_state
 
+            
+
             if done:
                 break
+
+        
 
         with torch.no_grad():
             # TODO: Compute the bootstrap value at the rollout boundary
@@ -179,6 +183,19 @@ def worker_process(
         total_loss.backward()
         for local_param, global_param in zip(local_net.parameters(), global_net.parameters()):
             global_param._grad = local_param.grad
+
+        # Verify gradient, and thus learning
+        # total_norm = 0.0
+        # for p in local_net.parameters():
+        #     if p.grad is not None:
+        #         total_norm += p.grad.norm().item() ** 2
+        # print(f"local_net grad norm: {total_norm ** 0.5:.4f}")   
+        # total_norm = 0.0
+        # for p in global_net.parameters():
+        #     if p.grad is not None:
+        #         total_norm += p.grad.norm().item() ** 2
+        # print(f"global_net grad norm: {total_norm ** 0.5:.4f}")  
+
         torch.nn.utils.clip_grad_norm_(local_net.parameters(), grad_clip)
         # torch.nn.utils.clip_grad_norm_(global_net.parameters(), grad_clip)
         optimizer.step()
@@ -188,6 +205,11 @@ def worker_process(
         local_net.load_state_dict(global_net.state_dict())
 
         current_ep = global_ep.value
+
+        if current_ep % 10 == 0:
+            print(f"On episode {current_ep}")
+            print(f"Episode reward: {episode_reward}")
+
         if done:
             metrics.add_episode_reward(episode_reward)
             metrics.add_loss(total_loss_value)
@@ -209,6 +231,7 @@ def worker_process(
             state = get_screen(env, device, config)
             episode_reward = 0.0
             episode_steps = 0
+
 
         if current_ep is not None and current_ep >= max_episodes:
             break
