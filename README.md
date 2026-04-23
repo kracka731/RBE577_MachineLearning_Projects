@@ -1,8 +1,8 @@
-# RBE577_MachineLearning_Projects
-Run: 
+## RBE577_MachineLearning_Projects
 
-`conda create -n ml_env python=3.8.10 -y`
+To run 
+```bash 
+git clone --recurse submodules https://github.com/kracka731/RBE577_MachineLearning_Projects.git 
+```
 
-`conda activate ml_env`
-
-`pip install -r requirements.txt`
+Each project has a slightly different environment setup. Please see the corresponding README.md in each project folder.

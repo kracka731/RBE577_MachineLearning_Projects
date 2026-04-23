@@ -23,7 +23,13 @@ git submodule init
 git submodule update --recursive
 ```
 
-Navigate to the robomimic and robosuite directories and run: 
+In the robosuite directory, run: 
+```bash 
+pip install -e .
+pip install -r submodules/robosuite/requirements-extra.txt 
+```
+
+In the robomimic directory, run: 
 ```bash 
 pip install -e .
 ```
@@ -31,10 +37,9 @@ pip install -e .
 4. Install required packages 
 ```bash
 pip install robosuite
-pip install robomimic
 pip install mujoco-py
 pip install "Cython<3"
-sudo apt-install patchelf
+sudo apt install patchelf
 ```
 
 ## Verify Installation 
