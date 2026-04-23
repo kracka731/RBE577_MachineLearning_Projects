@@ -25,6 +25,24 @@ pip install robomimic
 
 These packages can be seen at https://github.com/ARISE-Initiative/robosuite.git and https://github.com/ARISE-Initiative/robomimic.git 
 
+## Using Git Submodules 
+```bash 
+git submodule init
+git submodule update --recursive
+```
+
+## Other required packages 
+```bash
+pip install mujoco-py
+pip install "Cython<3"
+sudo apt-install patchelf
+```
+
+Navigate to the robomimic and robosuite directories and run: 
+```bash 
+pip install -e .
+```
+
 ## Verify Installation 
 ``` bash
 python -c "import torch; print(torch.__version__)"

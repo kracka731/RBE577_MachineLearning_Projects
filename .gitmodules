@@ -1,0 +1,6 @@
+[submodule "Project_4/submodules/robosuite"]
+	path = Project_4/submodules/robosuite
+	url = https://github.com/ARISE-Initiative/robosuite.git
+[submodule "Project_4/submodules/robomimic"]
+	path = Project_4/submodules/robomimic
+	url = https://github.com/ARISE-Initiative/robomimic.git
