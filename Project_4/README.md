@@ -53,3 +53,16 @@ You can also run the following test file. It does not need to finish training fo
 ```bash 
 python Project_4/submodules/robomimic/examples/train_bc_rnn.py 
 ```
+
+## The Project Itself 
+1. Collect demonstrations. 
+
+Navigate to the Project_4 directory, then run: 
+```bash 
+python submodules/robosuite/robosuite/scripts/collect_human_demonstrations.py  --environment PickPlace --robots Panda --device keyboard --renderer mujoco --directory demonstrations
+```
+
+Successful demonstrations can be seen with the following command. Replace the subfolder as needed. 
+```bash 
+python submodules/robosuite/robosuite/scripts/playback_demonstrations_from_hdf5.py --folder demonstrations/
+```
