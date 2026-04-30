@@ -4,7 +4,7 @@ From: nvidia/cuda:12.1.0-cudnn8-devel-ubuntu20.04
 %environment
     export MUJOCO_GL=osmesa
     export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-    export MUJOCO_PY_MUJOCO_PATH=/root/.mujoco/mujoco210
+    export MUJOCO_PY_MUJOCO_PATH=/fakeroot/.mujoco/mujoco210
 
 %post
     apt-get update
@@ -54,8 +54,8 @@ From: nvidia/cuda:12.1.0-cudnn8-devel-ubuntu20.04
     cd /workspace/Project_4
 
     curl https://mujoco.org/download/mujoco210-linux-x86_64.tar.gz -o mujoco210.tar.gz
-    mkdir -p /root/.mujoco
-    tar -xf mujoco210.tar.gz -C /root/.mujoco
+    mkdir -p /fakeroot/.mujoco
+    tar -xf mujoco210.tar.gz -C /fakeroot/.mujoco
 
 %runscript
     exec /bin/bash
