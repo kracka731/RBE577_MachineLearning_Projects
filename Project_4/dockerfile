@@ -1,0 +1,127 @@
+# Dockerfile for building MuJoCo in the Turing Cluster
+FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu20.04
+
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update
+
+# Build tools
+RUN apt install -y \
+    build-essential \
+    cmake \
+    curl \
+    libgl1-mesa-dev \
+    libwayland-dev \
+    libxinerama-dev \
+    libxcursor-dev \
+    libxkbcommon-dev \
+    libxrandr-dev \
+    libxi-dev \
+    ninja-build \
+    git \
+    pkg-config \
+    clang-13 \ 
+    vim \
+    wget \
+    libglew-dev
+
+RUN apt install -y \
+    python3.8 \
+    python3.8-dev \
+    python3-pip \
+    patchelf
+
+# Install PyTorch with CUDA 12.1
+RUN pip install torch==2.0.0 torchvision==0.15.0 torchaudio==2.0.0 \
+    --index-url https://download.pytorch.org/whl/cu121
+
+# Setup packages
+RUN pip install \
+    robosuite \
+    mujoco-py \
+    "Cython<3" \
+    mujoco-py 
+
+RUN git clone https://github.com/kracka731/RBE577_MachineLearning_Projects.git 
+
+# Set working directory
+ARG PROJ_DIRECTORY=/RBE577_MachineLearning_Projects/Project_4
+WORKDIR ${PROJ_DIRECTORY}
+
+# Initialize submodules
+RUN git submodule update --init --recursive
+
+# Install robosuite
+WORKDIR ${PROJ_DIRECTORY}/submodules/robosuite
+RUN pip install -e . && \
+    pip install -r requirements-extra.txt
+
+# Install robomimic
+WORKDIR ${PROJ_DIRECTORY}/submodules/robomimic
+RUN pip install -e .
+
+WORKDIR ${PROJ_DIRECTORY}
+
+# Install mujoco
+RUN curl https://mujoco.org/download/mujoco210-linux-x86_64.tar.gz --output mujoco210.tar.gz
+RUN mkdir /root/.mujoco
+RUN tar -xf mujoco210.tar.gz --directory /root/.mujoco
+
+# Environment variables for MuJoCo
+ENV MUJOCO_GL=osmesa
+
+# Default command
+CMD ["/bin/bash"]
+
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+ENV MUJOCO_PY_MUJOCO_PATH=/root/.mujoco/mujoco210
+
+# Cleanup
+# Remove cached package files (*.deb)
+# RUN apt clean
+
+# # Remove package files that can no longer be downloaded
+# RUN apt autoclean
+
+# # Remove packages that were installed as dependencies but are no longer needed
+# RUN apt autoremove -y
+
+
+# ENV MUJOCO_STATIC_LINK_DIR=/mujoco/lib/
+# ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Add LD_LIBRARY_PATH environment variable.
+# ENV LD_LIBRARY_PATH "/root/.mujoco/mujoco200/bin:${LD_LIBRARY_PATH}"
+# RUN echo 'export LD_LIBRARY_PATH=/root/.mujoco/mujoco200/bin:${LD_LIBRARY_PATH}' >> /etc/bash.bashrc
+
+# # Finally, install mujoco_py.
+# RUN pip install mujoco_py==2.0.2.8
+
+# WORKDIR /mujoco/
+
+# Commands.
+# Note that we enable IPO with -DCMAKE_INTERPROCEDURAL_OPTIMIZATION:BOOL=ON and
+# tell CMake to build static libs with -DBUILD_SHARED_LIBS:BOOL=OFF.
+# -----------------------------------------
+# docker buildx build . -t mujoco-build -f Dockerfile.ubuntu
+# -----------------------------------------
+# docker run --rm --volume /path/to/mujoco/:/mujoco/ -it mujoco-build:latest
+# -----------------------------------------
+# cmake -S . -B build \
+#     -DCMAKE_BUILD_TYPE:STRING=Release \
+#     -DCMAKE_INTERPROCEDURAL_OPTIMIZATION:BOOL=ON \
+#     -DCMAKE_INSTALL_PREFIX:STRING=${TMPDIR}/mujoco_install \
+#     -DMUJOCO_BUILD_EXAMPLES:BOOL=OFF \
+#     -DMUJOCO_BUILD_TESTS=OFF \
+#     -DBUILD_SHARED_LIBS:BOOL=OFF \
+#     -G Ninja \
+#     -DCMAKE_C_COMPILER:STRING=clang-13 \
+#     -DCMAKE_CXX_COMPILER:STRING=clang++-13 \
+#     -DMUJOCO_HARDEN:BOOL=ON
+# -----------------------------------------
+# cmake --build build --parallel --target glfw libmujoco_simulate --config=Release
+# -----------------------------------------
+# export MUJOCO_STATIC_LINK_DIR=$(realpath mujoco/build/lib/)
+# cargo run ...
+# -----------------------------------------
