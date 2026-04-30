@@ -21,7 +21,6 @@ RUN apt install -y \
     ninja-build \
     git \
     pkg-config \
-    clang-13 \
     vim \
     wget \
     libglew-dev

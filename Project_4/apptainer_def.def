@@ -23,7 +23,6 @@ From: nvidia/cuda:12.1.0-cudnn8-devel-ubuntu20.04
         ninja-build \
         git \
         pkg-config \
-        clang-13 \
         vim \
         wget \
         libglew-dev \
