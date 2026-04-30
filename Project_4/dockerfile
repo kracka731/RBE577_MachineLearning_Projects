@@ -21,7 +21,7 @@ RUN apt install -y \
     ninja-build \
     git \
     pkg-config \
-    clang-13 \ 
+    clang-13 \
     vim \
     wget \
     libglew-dev
@@ -40,8 +40,7 @@ RUN pip install torch==2.0.0 torchvision==0.15.0 torchaudio==2.0.0 \
 RUN pip install \
     robosuite \
     mujoco-py \
-    "Cython<3" \
-    mujoco-py 
+    "Cython<3" 
 
 RUN git clone https://github.com/kracka731/RBE577_MachineLearning_Projects.git 
 
