@@ -31,16 +31,17 @@ RUN apt install -y \
     python3-pip \
     patchelf
 
-# Install PyTorch with CUDA 12.1
-RUN pip install torch==2.0.0 torchvision==0.15.0 torchaudio==2.0.0 \
-    --index-url https://download.pytorch.org/whl/cu121
-
 # Setup packages
 RUN pip install \
     robosuite \
     mujoco-py \
     "Cython<3" \
     typing_extensions==4.13.2
+
+# Install PyTorch with CUDA 12.1
+RUN pip install torch==2.0.0 torchvision==0.15.0 torchaudio==2.0.0 \
+    --index-url https://download.pytorch.org/whl/cu121
+
 
 RUN git clone https://github.com/kracka731/RBE577_MachineLearning_Projects.git 
 
