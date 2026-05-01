@@ -2,6 +2,8 @@
 can be used to split and train a model."""
 import h5py
 import os
+from pathlib import Path
+import shutil
 
 input_root = '/demonstrations'
 output_file = 'merged_data.hdf5'
@@ -29,3 +31,7 @@ with h5py.File(output_file, 'w') as combined_h5:
 combined_h5.close()
 
 print(f'Combined HDF5 file saved as: {output_file}')
+
+# move file
+dest = shutil.move(output_file, input_root)
+# Path(output_file).rename(input_root+"/"+output_file)
