@@ -21,33 +21,52 @@ export MAMBA_ROOT_PREFIX=~/.micromamba   # stores envs in your home dir
 eval "$(~/.local/bin/micromamba shell hook -s bash)"
 
 
-# # module load libx11/1.7.0/hlcc3e6
-# # Expose X11 headers for mujoco-py compilation
-# export CPATH=$ENV_PREFIX/include:$CPATH
-# export C_INCLUDE_PATH=$ENV_PREFIX/include:$C_INCLUDE_PATH
-# export LIBRARY_PATH=$ENV_PREFIX/lib:$LIBRARY_PATH
-# export LD_LIBRARY_PATH=$ENV_PREFIX/lib:$LD_LIBRARY_PATH
-# export MUJOCO_GL=egl
-wget https://conda.anaconda.org/nvidia/linux-64/repodata.json.zst
+# module load libx11/1.7.0/hlcc3e6
+# Expose X11 headers for mujoco-py compilation
+export CPATH=$ENV_PREFIX/include:$CPATH
+export C_INCLUDE_PATH=$ENV_PREFIX/include:$C_INCLUDE_PATH
+export LIBRARY_PATH=$ENV_PREFIX/lib:$LIBRARY_PATH
+export LD_LIBRARY_PATH=$ENV_PREFIX/lib:$LD_LIBRARY_PATH
+export MUJOCO_GL=egl
 
-# Here's where unlinking occurs, ands when transaction finished and env removed
+# conda clean --all -y
+# pip cache purge
+# conda deactivate
+# conda env remove -n robomimic_env --yes
+# conda config --set solver classic
+
+# Remove any lingering environment
+micromamba deactivate 2>/dev/null || true
 micromamba env remove -n robomimic_env --yes 2>/dev/null || true
 
 # Also remove the directory manually in case micromamba left a partial folder
+# (this was causing "Non-conda folder exists at prefix" in your first error)
 rm -rf ~/.micromamba/envs/robomimic_env
+
+# Reset channels to a known good state
+# conda config --remove-key channels 2>/dev/null || true
+# conda config --add channels defaults
+# conda config --append channels conda-forge
+# conda config --append channels pytorch
+# conda config --append channels nvidia
+
+# micromamba config --remove-key channels 2>/dev/null || true
+# micromamba config --add channels defaults
+# micromamba config append channels conda-forge
+# micromamba config append channels pytorch
+# micromamba config append channels nvidia
 
 # ── Create and activate env ──────────────────────────────────
 
 echo "=== Creating environment ==="
-# WARNING YOU BETTER UNDERSTAND THE TERMS OF SERVICE
 micromamba create -n robomimic_env python=3.8.20 --yes \
     -c conda-forge -c defaults -c pytorch -c nvidia
 CREATE_EXIT=$?
 echo "=== micromamba create exited with: $CREATE_EXIT ==="
 
-# # List what's in the env dir so we can see what was actually created
-# echo "=== Contents of env prefix ==="
-# ls -la ~/.micromamba/envs/robomimic_env/bin/ 2>/dev/null || echo "DIRECTORY DOES NOT EXIST"
+# List what's in the env dir so we can see what was actually created
+echo "=== Contents of env prefix ==="
+ls -la ~/.micromamba/envs/robomimic_env/bin/ 2>/dev/null || echo "DIRECTORY DOES NOT EXIST"
 
 if [ $CREATE_EXIT -ne 0 ]; then
     echo "FATAL: micromamba create failed — aborting"
@@ -61,18 +80,18 @@ ENV_PREFIX="$MAMBA_ROOT_PREFIX/envs/robomimic_env"
 PY="$ENV_PREFIX/bin/python"
 PIP="$ENV_PREFIX/bin/pip"
 
-# echo "=== Checking python binary ==="
-# ls -la $PY || echo "python3.8 not found at $PY"
-# ls -la $ENV_PREFIX/bin/python* || echo "no python binaries found"
+echo "=== Checking python binary ==="
+ls -la $PY || echo "python3.8 not found at $PY"
+ls -la $ENV_PREFIX/bin/python* || echo "no python binaries found"
 
-# # ── Hard stop if wrong Python ─────────────────────────────────
-# PY_VER=$($PY --version 2>&1)
-# echo "Python: $PY_VER"
-# if [[ "$PY_VER" != *"3.8"* ]]; then
-#     echo "FATAL: Wrong Python $PY_VER — aborting"
-#     exit 1
-# fi
-# echo "Using: $($PY -c 'import sys; print(sys.executable)')"
+# ── Hard stop if wrong Python ─────────────────────────────────
+PY_VER=$($PY --version 2>&1)
+echo "Python: $PY_VER"
+if [[ "$PY_VER" != *"3.8"* ]]; then
+    echo "FATAL: Wrong Python $PY_VER — aborting"
+    exit 1
+fi
+echo "Using: $($PY -c 'import sys; print(sys.executable)')"
 
 # source ~/.conda/envs/robomimic_env/lib/python3.8/venv/scripts/common/activate
 # source ~/.conda/envs/robomimic_env/bin/activate
@@ -87,12 +106,11 @@ $PIP install torch==2.0.0+cu118 torchvision==0.15.0+cu118 torchaudio==2.0.0 \
   --index-url https://download.pytorch.org/whl/cu118
 echo "torch installed"
 $PY --version
-# no mesa-libgl-devel
-micromamba install -c conda-forge xorg-libxext -y
-micromamba install -c conda-forge libglu mesa -y 
+micromamba install -c conda-forge xorg-libxext mesa-libgl-devel -y || true
+micromamba install -c conda-forge libglu mesa -y || true
 
-micromamba install -c conda-forge libstdcxx-ng -y # Takes a long time. Necessary?
-micromamba install -c conda-forge libglvnd-devel -y
+micromamba install -c conda-forge libstdcxx-ng -y
+micromamba install -c conda-forge xorg-libxext libglvnd-devel mesa-libegl-devel -y
 micromamba install -c conda-forge xorg-libx11 -y
 ls $MAMBA_ROOT_PREFIX/envs/robomimic_env/include/X11/X.h
 export CPATH=$ENV_PREFIX/include:$CPATH
@@ -123,6 +141,7 @@ micromamba install -c conda-forge \
     jinja2 markupsafe mpmath networkx pillow pysocks \
     requests sympy urllib3 gmpy2
 
+ls $MAMBA_ROOT_PREFIX/envs/robomimic_env/include/X11/Xlib.h
 
 echo "commited the large install"
 $PY --version
