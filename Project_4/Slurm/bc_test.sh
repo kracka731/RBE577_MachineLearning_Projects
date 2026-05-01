@@ -18,7 +18,11 @@ module load python
 module load apptainer
 
 apptainer run --userns box.sif
+ls -a
 
+python -c "import torch; print(torch.__version__)"
+python -c "import robomimic; print('robomimic OK')"
+python -c "import robosuite; print('robosuite OK')"
 
 python /submodules/robomimic/examples/train_bc_rnn.py
 
