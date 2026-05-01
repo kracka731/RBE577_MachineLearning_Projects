@@ -15,4 +15,4 @@
 
 module load apptainer 
 
-apptainer build box.sif Slurm/apptainer_def.def
+apptainer build --force box.sif Slurm/apptainer_def.def
