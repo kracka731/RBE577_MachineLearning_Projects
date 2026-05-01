@@ -63,11 +63,11 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
     ls -a
 
 
-    mkdir -p /.mujoco
+    mkdir -p /fakeroot/.mujoco
     curl -L https://github.com/deepmind/mujoco/releases/download/2.1.0/mujoco210-linux-x86_64.tar.gz \
-        -o /.mujoco/mujoco210.tar.gz
-    tar -xzf /.mujoco/mujoco210.tar.gz -C /.mujoco/
-    rm /.mujoco/mujoco210.tar.gz
+        -o /fakeroot/.mujoco/mujoco210.tar.gz
+    tar -xzf /fakeroot/.mujoco/mujoco210.tar.gz -C /fakeroot/.mujoco/
+    rm /fakeroot/.mujoco/mujoco210.tar.gz
 
 %runscript
     exec /bin/bash
