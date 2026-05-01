@@ -14,20 +14,10 @@
 #SBATCH -A rbe577 # for RBE577 P3
 #SBATCH -p academic # for RBE577 P3
 
-module load python=
+module load python
+module load apptainer
 
-# # python --version
-# # ── Hard stop if wrong Python ─────────────────────────────────
-# PY_VER=$($PY --version 2>&1)
-# echo "$PY: $PY_VER"
-# if [[ "$PY_VER" != *"3.8"* ]]; then
-#     echo "FATAL: Wrong Python $PY_VER — aborting"
-#     exit 1
-# fi
-# echo "Using: $(which $PY) at final portion"
-# $PY -c "import torch; print(torch.__version__)"
-# $PY -c "import robomimic; print('robomimic OK')"
-# $PY -c "import robosuite; print('robosuite OK')"
+apptainer run --userns box.sif
 
 
 python /submodules/robomimic/examples/train_bc_rnn.py
