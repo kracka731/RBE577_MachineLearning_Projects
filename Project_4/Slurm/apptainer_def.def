@@ -59,9 +59,14 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
 
     cd submodules/robosuite
     pip install -r requirements-extra.txt
+    pip install -e .
 
     cd ../robomimic
     pip install -e .
+
+    cd
+    cd /tmp
+    python3.8 -c "import mujoco_py"
 
     cd 
     ls -a
