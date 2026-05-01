@@ -59,11 +59,15 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
     cd ../robomimic
     pip install -e .
 
-    cd /workspace/Project_4
+    cd ../../..
+    ls
 
-    curl https://mujoco.org/download/mujoco210-linux-x86_64.tar.gz -o mujoco210.tar.gz
-    mkdir -p /fakeroot/.mujoco
-    tar -xf mujoco210.tar.gz -C /fakeroot/.mujoco
+
+    mkdir -p /.mujoco
+    curl -L https://github.com/deepmind/mujoco/releases/download/2.1.0/mujoco210-linux-x86_64.tar.gz \
+        -o /.mujoco/mujoco210.tar.gz
+    tar -xzf /.mujoco/mujoco210.tar.gz -C /.mujoco/
+    rm /.mujoco/mujoco210.tar.gz
 
 %runscript
     exec /bin/bash
