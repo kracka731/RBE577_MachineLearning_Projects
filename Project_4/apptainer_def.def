@@ -54,7 +54,6 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
     git submodule update --init --recursive
 
     cd submodules/robosuite
-    pip install -e .
     pip install -r requirements-extra.txt
 
     cd ../robomimic
