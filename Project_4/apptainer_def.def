@@ -38,8 +38,7 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
     apt update
 
     git clone https://github.com/kracka731/RBE577_MachineLearning_Projects.git /workspace
-
-    pip install usd-core==25.11
+    git checkout turing_kasia
 
     cd /workspace/Project_4/Slurm
     pip install -r pip_reqs_froze.txt
