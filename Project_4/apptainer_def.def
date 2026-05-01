@@ -37,7 +37,7 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
     pip install torch==2.0.0 torchvision==0.15.0 torchaudio==2.0.0 \
         --index-url https://download.pytorch.org/whl/cu118
 
-    pip install robosuite mujoco-py "Cython<3"
+    pip install robosuite mujoco-py "Cython<3" typing_extensions==4.13.2
 
     git clone https://github.com/kracka731/RBE577_MachineLearning_Projects.git /workspace
 
