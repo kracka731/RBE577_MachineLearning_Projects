@@ -4,8 +4,13 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
 %environment
     export MUJOCO_GL=osmesa
     export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-    export MUJOCO_PY_MUJOCO_PATH=/fakeroot/.mujoco/mujoco210
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/fakeroot/.mujoco/mujoco210/bin
+
+    export MUJOCO_PY_MUJOCO_PATH=/root/mujoco/mujoco210
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/root/mujoco/mujoco210/bin
+    
+    export MUJOCO_PY_MJPRO_PATH=/root/mujoco/mujoco210
+    export MUJOCO_PY_BUILD_DIR=/root/mujoco_py_build
+    export MUJOCO_PY_FORCE_CPU=1
     export C_INCLUDE_PATH=/usr/include
     export APPTAINERENV_MUJOCO_GL=osmesa
 
@@ -13,12 +18,17 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
     export DEBIAN_FRONTEND=noninteractive
 
     apt-get update
-
     apt-get install -y \
         build-essential \
         cmake \
         curl \
         libgl1-mesa-dev \
+        libgl1-mesa-glx \
+        libosmesa6-dev \
+        libosmesa6 \
+        libglew-dev \
+        libglfw3 \
+        libglfw3-dev \
         libwayland-dev \
         libxinerama-dev \
         libxcursor-dev \
@@ -31,30 +41,51 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
         pkg-config \
         vim \
         wget \
-        libglew-dev \
+        patchelf \
         python3.8 \
         python3.8-dev \
-        python3-pip \
-        patchelf
+        python3-pip
 
     apt-get clean
     apt-get autoremove -y
-    apt-get update
 
-    git clone https://github.com/kracka731/RBE577_MachineLearning_Projects.git /workspace
+    mkdir -p /root/mujoco
+    curl -L https://github.com/deepmind/mujoco/releases/download/2.1.0/mujoco210-linux-x86_64.tar.gz \
+        -o /root/mujoco/mujoco210.tar.gz
+    tar -xzf /root/mujoco/mujoco210.tar.gz -C /root/mujoco/
+    rm /root/mujoco/mujoco210.tar.gz
 
-    cd /workspace/Project_4/Slurm
+    export MUJOCO_PY_MUJOCO_PATH=/root/mujoco/mujoco210
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/root/mujoco/mujoco210/bin
+    export MUJOCO_GL=osmesa
+    export MUJOCO_PY_FORCE_CPU=1
+
+    git clone https://github.com/kracka731/RBE577_MachineLearning_Projects.git /root/workspace
+
+    cd /root/workspace/Project_4/Slurm
     git checkout turing_kasia
+
     pip install -r pip_reqs_froze.txt
 
-    cd ../..
-
-    pip install mujoco-py "Cython<3" mujoco==3.2.3
+    pip install mujoco-py "Cython<3" 
 
     pip install torch==2.0.0 torchvision==0.15.0 torchaudio==2.0.0 \
-        --index-url https://download.pytorch.org/whl/cu118
+    --index-url https://download.pytorch.org/whl/cu118
 
-    cd /workspace/Project_4
+    cd /tmp
+
+    python3 << 'EOF'
+import os
+os.environ['MUJOCO_PY_MUJOCO_PATH'] = '/root/mujoco/mujoco210'
+os.environ['MUJOCO_GL'] = 'osmesa'
+import mujoco_py
+print("mujoco_py successfully compiled!")
+EOF
+
+
+    pip install mujoco==3.2.3
+
+    cd /root/workspace/Project_4
     git submodule update --init --recursive
 
     cd submodules/robosuite
@@ -62,16 +93,37 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
 
     cd ../robomimic
     pip install -e .
+    
+    # Verify everything works
+    cd /root
+    python3 << 'EOF'
+import os
+os.environ['MUJOCO_GL'] = 'osmesa'
+try:
+    import mujoco_py
+    print("✓ mujoco_py imported successfully")
+except Exception as e:
+    print(f"✗ mujoco_py import failed: {e}")
 
-    cd 
-    ls -a
+try:
+    import mujoco
+    print("✓ mujoco imported successfully")
+except Exception as e:
+    print(f"✗ mujoco import failed: {e}")
 
+try:
+    import robomimic
+    print("✓ robomimic imported successfully")
+except Exception as e:
+    print(f"✗ robomimic import failed: {e}")
 
-    mkdir -p /fakeroot/.mujoco
-    curl -L https://github.com/deepmind/mujoco/releases/download/2.1.0/mujoco210-linux-x86_64.tar.gz \
-        -o /fakeroot/.mujoco/mujoco210.tar.gz
-    tar -xzf /fakeroot/.mujoco/mujoco210.tar.gz -C /fakeroot/.mujoco/
-    rm /fakeroot/.mujoco/mujoco210.tar.gz
+try:
+    import robosuite
+    print("✓ robosuite imported successfully")
+except Exception as e:
+    print(f"✗ robosuite import failed: {e}")
+EOF
+
 
 %runscript
     exec /bin/bash
