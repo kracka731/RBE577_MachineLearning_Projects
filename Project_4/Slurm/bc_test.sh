@@ -14,11 +14,12 @@
 #SBATCH -A rbe577 # for RBE577 P3
 #SBATCH -p academic # for RBE577 P3
 
-module load python
 module load apptainer
 
 apptainer run --userns box.sif
 ls -a
+pip install robomimic 
+pip install robosuite
 
 python3 -c "import torch; print(torch.__version__)"
 python3 -c "import robomimic; print('robomimic OK')"
