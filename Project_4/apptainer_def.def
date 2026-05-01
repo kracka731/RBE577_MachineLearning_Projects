@@ -59,8 +59,8 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
     cd ../robomimic
     pip install -e .
 
-    cd ../../..
-    ls
+    cd 
+    ls -a
 
 
     mkdir -p /.mujoco
