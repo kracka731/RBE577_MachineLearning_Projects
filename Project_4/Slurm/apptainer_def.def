@@ -78,5 +78,8 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
     tar -xzf /fakeroot/.mujoco/mujoco210.tar.gz -C /fakeroot/.mujoco/
     rm /fakeroot/.mujoco/mujoco210.tar.gz
 
+    pip install robosuite
+    pip install robomimic
+
 %runscript
     exec /bin/bash
