@@ -6,6 +6,8 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
     export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
     export MUJOCO_PY_MUJOCO_PATH=/fakeroot/.mujoco/mujoco210
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/fakeroot/.mujoco/mujoco210/bin
+    export C_INCLUDE_PATH=/usr/include
+    export APPTAINERENV_MUJOCO_GL=osmesa
 
 %post
     export DEBIAN_FRONTEND=noninteractive
@@ -23,6 +25,7 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
         libxkbcommon-dev \
         libxrandr-dev \
         libxi-dev \
+        libosmesa6-dev \
         ninja-build \
         git \
         pkg-config \
