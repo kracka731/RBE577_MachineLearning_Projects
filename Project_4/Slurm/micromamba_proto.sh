@@ -25,6 +25,10 @@ module load libx11/1.7.0/hlcc3e6
 export CPATH=$LIBX11_ROOT/include:$CPATH
 export MUJOCO_GL=egl
 
+module load glew/2.2.0/azi6l2x
+# export CPATH=$OpenGL_ROOT/include:$CPATH
+
+
 # conda clean --all -y
 # pip cache purge
 # conda deactivate
@@ -32,7 +36,7 @@ export MUJOCO_GL=egl
 # conda config --set solver classic
 
 # Remove any lingering environment
-micromamba deactivate 2>/dev/null || true
+
 micromamba env remove -n robomimic_env --yes 2>/dev/null || true
 
 # Also remove the directory manually in case micromamba left a partial folder
@@ -79,9 +83,9 @@ PIP="$ENV_PREFIX/bin/pip"
 $PIP install pyopengl
 
 
-echo "=== Checking python binary ==="
-ls -la $PY || echo "python3.8 not found at $PY"
-ls -la $ENV_PREFIX/bin/python* || echo "no python binaries found"
+# echo "=== Checking python binary ==="
+# ls -la $PY || echo "python3.8 not found at $PY"
+# ls -la $ENV_PREFIX/bin/python* || echo "no python binaries found"
 
 # ── Hard stop if wrong Python ─────────────────────────────────
 PY_VER=$($PY --version 2>&1)
@@ -102,13 +106,18 @@ echo "Using: $($PY -c 'import sys; print(sys.executable)')"
 
 # python --version
 
+micromamba install -c conda-forge \
+    brotli certifi charset-normalizer filelock idna \
+    jinja2 markupsafe mpmath networkx pillow pysocks \
+    requests sympy urllib3 gmpy2 libstdcxx-ng xorg-libx11 \
+    mesa mesa-libgl-devel-cos7-x86_64 mesa-libglu-devel-cos7-x86_64 glew freegluts \
+    conda-forge xorg-xproto xorg-libx11 glew mkl mkl-include mkl-service
 
 # torch 2.0.0 with CUDA 11.8
 $PIP install torch==2.0.0+cu118 torchvision==0.15.0+cu118 torchaudio==2.0.0 \
   --index-url https://download.pytorch.org/whl/cu118
 echo "torch installed"
-$PY --version
-micromamba install -n robomimic_env -c conda-forge xorg-xproto xorg-libx11 glew -y
+# $PY --version
 ls $MAMBA_ROOT_PREFIX/envs/robomimic_env/include/X11/X.h || exit 1
 
 # micromamba install -c conda-forge xorg-libx11 xorg-libx11-devel -y
@@ -138,22 +147,11 @@ $PY --version
 
 source ~/.bashrc
 
-
-micromamba install -c conda-forge \
-    brotli certifi charset-normalizer filelock idna \
-    jinja2 markupsafe mpmath networkx pillow pysocks \
-    requests sympy urllib3 gmpy2
-
-micromamba install -c conda-forge libstdcxx-ng -y
-# micromamba install -c conda-forge xorg-libxext libglvnd-devel mesa-libegl-devel -y
-micromamba install -c conda-forge xorg-libx11 -y
-
-ls $MAMBA_ROOT_PREFIX/envs/robomimic_env/include/X11/Xlib.h
+# ls $MAMBA_ROOT_PREFIX/envs/robomimic_env/include/X11/Xlib.h
 
 echo "commited the large install"
 $PY --version
 
-micromamba install -c conda-forge mkl mkl-include mkl-service -y 
 
 echo "installed mkl"
 # $PY --version
