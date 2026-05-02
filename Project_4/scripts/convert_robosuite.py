@@ -59,8 +59,10 @@ if __name__ == "__main__":
 
     # store env meta
     env_name = f["data"].attrs.get("env", None)
+    print(f"env_name: {env_name}")
     if "env_info" in f["data"].attrs:
         env_info = json.loads(f["data"].attrs["env_info"])
+        print(f"env_info: {env_info}")
     if env_name is not None and env_info is not None:
         env_meta = dict(
             type=EB.EnvType.ROBOSUITE_TYPE,
