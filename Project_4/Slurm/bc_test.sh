@@ -15,24 +15,29 @@
 
 module load apptainer
 
-ls -a
+# apptainer run --userns ~/Project_4/Slurm/box.sif # use this when interactive
+# apptainer exec --userns ~/Project_4/Slurm/box.sif bash
 
-apptainer exec --userns box.sif pip install robomimic
-apptainer exec --userns box.sif pip install robosuite==1.4.1 --force-reinstall
-apptainer exec --userns box.sif \
+ls -a
+# apptainer exec --userns ~/Project_4/Slurm/box.sif bash -c \
+# apptainer exec --userns ~/Project_4/Slurm/box.sif bash
+
+apptainer exec --userns Slurm/box.sif pip install robomimic
+apptainer exec --userns Slurm/box.sif pip install robosuite==1.4.1 --force-reinstall
+apptainer exec --userns Slurm/box.sif \
     python3 -c "import torch; print(torch.__version__)"
-apptainer exec --userns box.sif \
+apptainer exec --userns Slurm/box.sif \
     python3 -c "import robomimic; print(f'robomimic OK {robomimic.__version__}')"
 
-apptainer exec --userns box.sif \
+apptainer exec --userns Slurm/box.sif \
     python3 -c "import robosuite; print(f'robosuite OK {robosuite.__version__}')"
 
 
-apptainer exec --userns box.sif bash -c \ 'cp -r /usr/local/lib/python3.8/dist-packages/mujoco_py /tmp/mujoco_py_writable'
+apptainer exec --userns Slurm/box.sif bash -c \ 'cp -r /usr/local/lib/python3.8/dist-packages/mujoco_py /tmp/mujoco_py_writable'
 apptainer exec --userns --nv \
   --bind /tmp \
   --bind /tmp/mujoco_py_writable:/usr/local/lib/python3.8/dist-packages/mujoco_py \
-  box.sif \
+  Slurm/box.sif \
   bash -c 'yes | python3 /root/workspace/Project_4/submodules/robomimic/examples/train_bc_rnn.py'
 
 
