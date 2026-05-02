@@ -15,25 +15,32 @@
 
 module load apptainer
 
-apptainer exec --userns Slurm/box.sif pip install robomimic
-apptainer exec --userns Slurm/box.sif pip install robosuite==1.4.1 --force-reinstall
-apptainer exec --userns Slurm/box.sif \
+PROJECT_DIR=${SLURM_SUBMIT_DIR}
+
+echo "Working from: ${PROJECT_DIR}"
+
+apptainer exec --userns ${PROJECT_DIR}/Slurm/box.sif pip install robomimic
+apptainer exec --userns ${PROJECT_DIR}/Slurm/box.sif pip install robosuite==1.4.1 --force-reinstall
+apptainer exec --userns ${PROJECT_DIR}/Slurm/box.sif \
     python3 -c "import torch; print(torch.__version__)"
-apptainer exec --userns Slurm/box.sif \
+apptainer exec --userns ${PROJECT_DIR}/Slurm/box.sif \
     python3 -c "import robomimic; print(f'robomimic OK {robomimic.__version__}')"
 
-apptainer exec --userns Slurm/box.sif \
+apptainer exec --userns ${PROJECT_DIR}/Slurm/box.sif \
     python3 -c "import robosuite; print(f'robosuite OK {robosuite.__version__}')"
 
 
-apptainer exec --userns Slurm/box.sif bash -c \ 'cp -r /usr/local/lib/python3.8/dist-packages/mujoco_py /tmp/mujoco_py_writable'
+apptainer exec --userns ${PROJECT_DIR}/Slurm/box.sif bash -c \ 'cp -r /usr/local/lib/python3.8/dist-packages/mujoco_py /tmp/mujoco_py_writable'
+
+
 apptainer exec --userns --nv \
   --bind /tmp \
   --bind /tmp/mujoco_py_writable:/usr/local/lib/python3.8/dist-packages/mujoco_py \
-  Slurm/box.sif \
-  bash -c "yes | python3 /root/workspace/Project_4/submodules/robomimic/robomimic/scripts/train.py \
-  --config '/root/workspace/Project_4/training_configs/bc.json' \
-  --dataset '/root/workspace/Project_4/demonstrations/merged_converted.hdf5' \
+  --bind ${PROJECT_DIR}:/work \
+  ${PROJECT_DIR}/Slurm/box.sif \
+  bash -c "yes | python3 -m robomimic.scripts.train \
+  --config /work/training_configs/bc_clean.json \
+  --dataset /work/demonstrations/merged_converted.hdf5 \
   --name 'BC_Cloning_Experiment'"
 
 
