@@ -63,7 +63,6 @@ From: nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
     git clone https://github.com/kracka731/RBE577_MachineLearning_Projects.git /root/workspace
 
     cd /root/workspace/Project_4/Slurm
-    git checkout turing_kasia
 
     pip install -r pip_reqs_froze.txt
 
