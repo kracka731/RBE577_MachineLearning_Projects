@@ -5,8 +5,8 @@
 #SBATCH --error=bc_train_error.txt             # Standard error file
 #SBATCH --nodes=1                     # Number of nodes
 #SBATCH --ntasks-per-node=1           # Number of tasks per node
-#SBATCH --cpus-per-task=40             # Number of CPU cores per task
-#SBATCH --gpus=2
+#SBATCH --cpus-per-task=20             # Number of CPU cores per task
+#SBATCH --gpus=0
 #SBATCH --time=0-16:00:00                # Maximum runtime (D-HH:MM:SS)
 #SBATCH --mail-type=END               # Send email at job completion
 #SBATCH --mail-user=jkuehne@wpi.edu    # Email address for notifications
@@ -47,6 +47,6 @@ apptainer exec --userns --nv \
   --env PYTHONPATH=/root/workspace/Project_4/submodules/robomimic:$PYTHONPATH \
   ${PROJECT_DIR}/Slurm/box.sif \
   bash -c "yes | python3 /root/workspace/Project_4/submodules/robomimic/robomimic/scripts/train.py \
-  --config /work/training_configs/bc.json \
-  --dataset /work/demonstrations/merged_converted.hdf5 \
-  --name 'BC_Cloning_Experiment'"
+  --config /work/training_configs/bc_10.json \
+  # --dataset /work/demonstrations/merged_converted.hdf5 \
+  --name 'BC_test_10_demos'"
