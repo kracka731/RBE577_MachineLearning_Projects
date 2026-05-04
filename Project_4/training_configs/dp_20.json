@@ -38,7 +38,12 @@
         "ckpt_path": null
     },
     "train": {
-        "data": null,
+        "data": [
+        {
+            "path": "/work/demonstrations/merged_converted.hdf5",
+            "filter_key": "train_20_demos"
+        }
+        ],
         "output_dir": "/work/dp_trained_models",
         "normalize_weights_by_ds_size": false,
         "num_data_workers": 0,
